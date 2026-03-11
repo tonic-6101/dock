@@ -137,7 +137,7 @@ def get_sessions(
     items = frappe.get_all(
         "Dock Guest Session",
         filters=filters,
-        fields=["name", "label", "view_id", "source_app", "source_doctype",
+        fields=["name", "token", "label", "view_id", "source_app", "source_doctype",
                 "source_name", "is_active", "expires_at", "last_accessed_at", "created_by"],
         order_by="creation desc",
         limit=int(limit),

@@ -1,1 +1,0 @@
-import{I as s,w as t,x as o,C as a}from"../dock-navbar.esm.js";const n={name:"DockGuestSessionsPage"},r={class:"p-8"};function c(i,e,d,l,p,x){return t(),o("div",r,[...e[0]||(e[0]=[a("h1",{class:"text-2xl font-semibold text-gray-900 dark:text-white"},"Guest Portals",-1)])])}const f=s(n,[["render",c]]);export{f as default};

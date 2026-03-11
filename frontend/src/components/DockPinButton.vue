@@ -12,10 +12,11 @@ export default { name: 'DockPinButton' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { Bookmark, BookmarkCheck } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useBookmarks } from '@/composables/useBookmarks'
+import { useRecentItems } from '@/composables/useRecentItems'
 import { useDockBoot } from '@/composables/useDockBoot'
 
 interface ParsedRoute {
@@ -27,6 +28,7 @@ interface ParsedRoute {
 const props = defineProps<{ currentPath: string }>()
 
 const { bookmarks, atLimit, isBookmarked, addBookmark, removeBookmark } = useBookmarks()
+const { items: recentItems } = useRecentItems()
 const { registeredApps } = useDockBoot()
 
 const appColorMap = computed(() => {
@@ -63,12 +65,18 @@ async function toggle() {
     if (isPinned.value && bookmarkName.value) {
       removeBookmark(bookmarkName.value)
     } else {
+      // Prefer human label from recent items (set by dock:trackVisit); fall back to docname
+      const recent = recentItems.value.find(
+        r => r.app === parsed.value!.app
+          && r.doctype === parsed.value!.doctype
+          && r.docname === parsed.value!.docname,
+      )
       await addBookmark({
         app: parsed.value.app,
         doctype: parsed.value.doctype,
         docname: parsed.value.docname,
-        label: parsed.value.docname, // refined by trackItem when available
-        icon: '',
+        label: recent?.label ?? parsed.value.docname,
+        icon: recent?.icon ?? '',
         color: appColorMap.value[parsed.value.app] ?? '',
       })
     }

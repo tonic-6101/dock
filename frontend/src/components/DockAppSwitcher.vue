@@ -15,6 +15,7 @@ import DockBookmarks from './DockBookmarks.vue'
 
 const { registeredApps } = useDockBoot()
 const open = ref(false)
+const frappeLogoUrl = '/assets/frappe/images/frappe-framework-logo.svg'
 </script>
 
 <template>
@@ -69,7 +70,7 @@ const open = ref(false)
                  hover:bg-black/5 dark:hover:bg-white/10 transition-colors
                  text-sm text-[var(--dock-icon)]"
         >
-          <Grid3x3 class="w-4 h-4" />
+          <img :src="frappeLogoUrl" alt="Frappe" class="w-4 h-4" />
           {{ __('Frappe Desk') }}
         </a>
       </div>

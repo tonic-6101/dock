@@ -75,6 +75,11 @@ function handleNavigation() {
 }
 
 // Patch pushState to fire navigation tracking
+function onTrackVisit(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail) trackItem(detail)
+}
+
 onMounted(() => {
   const orig = history.pushState.bind(history)
   ;(history as any).__dockPushState = orig
@@ -83,12 +88,7 @@ onMounted(() => {
     handleNavigation()
   }
   window.addEventListener('popstate', handleNavigation)
-
-  // Listen for manual dock:trackVisit events from domain apps
-  window.addEventListener('dock:trackVisit', (e: Event) => {
-    const detail = (e as CustomEvent).detail
-    if (detail) trackItem(detail)
-  })
+  window.addEventListener('dock:trackVisit', onTrackVisit)
 })
 
 onUnmounted(() => {
@@ -97,6 +97,7 @@ onUnmounted(() => {
     delete (history as any).__dockPushState
   }
   window.removeEventListener('popstate', handleNavigation)
+  window.removeEventListener('dock:trackVisit', onTrackVisit)
 })
 
 // Jana is a soft dependency

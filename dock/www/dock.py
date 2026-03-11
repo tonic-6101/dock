@@ -11,8 +11,27 @@ from dock.boot import (
 
 
 def get_context(context):
-    if frappe.session.user == "Guest":
+    # Guest portal routes (/dock/guest/<token>) are public — no Frappe login required.
+    # All other /dock/* routes require a logged-in user.
+    path = frappe.request.path if frappe.request else ""
+    is_guest_portal = frappe.session.user == "Guest" and "/guest/" in path
+
+    if frappe.session.user == "Guest" and not is_guest_portal:
         frappe.throw(frappe._("Please log in to access Dock."), frappe.PermissionError)
+
+    if is_guest_portal:
+        # Minimal boot for guest portal shell — no user-specific data
+        raw_settings = frappe.db.get_singles_dict("Dock Settings")
+        boot = {
+            "installed": True,
+            "is_guest_portal": True,
+            "settings": {
+                "site_label": raw_settings.get("site_label") or "",
+                "privacy_policy_url": raw_settings.get("privacy_policy_url") or "",
+            },
+        }
+        context.dock_boot_json = json.dumps(boot)
+        return
 
     settings = _get_dock_settings()
     frappe_time_installed = "frappe_time" in frappe.get_installed_apps()
@@ -60,7 +79,7 @@ def _get_dock_settings():
     fields = [
         "theme", "timezone", "week_start", "date_format", "site_label",
         "enable_global_timer", "enable_bookmarks", "enable_recent_items",
-        "recent_items_limit",
+        "recent_items_limit", "privacy_policy_url",
     ]
     raw = frappe.db.get_singles_dict("Dock Settings")
     return {f: raw.get(f) for f in fields}

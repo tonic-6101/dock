@@ -31,8 +31,12 @@ const router = createRouter({
       component: () => import('@/pages/DockNotificationsPage.vue'),
     },
     {
-      path: '/guest/sessions',
+      path: '/guest',
       component: () => import('@/pages/DockGuestSessionsPage.vue'),
+    },
+    {
+      path: '/guest/:token',
+      component: () => import('@/pages/DockGuestPortalPage.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

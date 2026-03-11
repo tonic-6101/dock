@@ -1,1 +1,0 @@
-import{v as e,w as s,x as a,y as o,z as n,A as c}from"../dock-navbar.esm.js";const p={class:"dock-app-label text-sm font-semibold text-[var(--dock-text)] truncate max-w-[160px]"},l={name:"DockAppLabel"},u=e({...l,setup(r){const{settings:t}=c();return(_,i)=>(s(),a("span",p,o(n(t)?.site_label||"Desk"),1))}});export{u as default};

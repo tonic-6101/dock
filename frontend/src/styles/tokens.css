@@ -13,7 +13,7 @@
 }
 
 .dark {
-  --dock-bg:     theme('colors.gray.900');
+  --dock-bg:     theme('colors.gray.950');
   --dock-border: theme('colors.gray.700');
   --dock-text:   theme('colors.gray.100');
   --dock-icon:   theme('colors.gray.400');

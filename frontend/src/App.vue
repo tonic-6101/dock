@@ -11,9 +11,9 @@ import DockNavbar from './components/DockNavbar.vue'
 </script>
 
 <template>
-  <div class="flex flex-col min-h-screen">
+  <div class="flex flex-col min-h-screen bg-white dark:bg-gray-950 transition-colors">
     <DockNavbar />
-    <main class="flex-1">
+    <main class="flex-1 bg-white dark:bg-gray-950">
       <RouterView />
     </main>
   </div>

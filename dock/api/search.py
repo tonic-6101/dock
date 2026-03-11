@@ -73,9 +73,12 @@ def _search_section(app_name: str, section: dict, query: str, limit: int) -> lis
         return []
 
     results = []
+    q_lower = query.lower()
     for row in rows:
         label = row.get(display_field) or row["name"]
         route = route_template.replace("{name}", row["name"])
+        # Prefix match scores higher than substring match
+        score = 2 if label.lower().startswith(q_lower) else 1
         results.append({
             "label": label,
             "route": route,
@@ -83,7 +86,7 @@ def _search_section(app_name: str, section: dict, query: str, limit: int) -> lis
             "section": section.get("label", doctype),
             "doctype": doctype,
             "name": row["name"],
-            "_score": 1,
+            "_score": score,
         })
     return results
 
@@ -112,6 +115,7 @@ def _search_people(query: str, limit: int) -> list:
         frappe.log_error("dock people search failed")
         return []
 
+    q_lower = query.lower()
     return [
         {
             "label": row.get("full_name") or row["name"],
@@ -120,7 +124,7 @@ def _search_people(query: str, limit: int) -> list:
             "section": "People",
             "doctype": "Contact",
             "name": row["name"],
-            "_score": 1,
+            "_score": 2 if (row.get("full_name") or row["name"]).lower().startswith(q_lower) else 1,
         }
         for row in rows
     ]
