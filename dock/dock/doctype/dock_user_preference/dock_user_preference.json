@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "autoname": "field:user",
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "theme",
+  "timezone",
+  "week_start",
+  "date_format",
+  "ui_language"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1,
+   "description": "One record per user. Name IS the Frappe username."
+  },
+  {
+   "fieldname": "theme",
+   "fieldtype": "Select",
+   "label": "Theme",
+   "options": "\nlight\ndark\nsystem",
+   "description": "Blank = use browser/system preference"
+  },
+  {
+   "fieldname": "timezone",
+   "fieldtype": "Data",
+   "label": "Timezone",
+   "description": "IANA timezone string (e.g. Europe/Berlin, UTC)"
+  },
+  {
+   "fieldname": "week_start",
+   "fieldtype": "Select",
+   "label": "Week Start",
+   "options": "\nMonday\nSunday",
+   "description": "Blank = inherit org default"
+  },
+  {
+   "fieldname": "date_format",
+   "fieldtype": "Select",
+   "label": "Date Format",
+   "options": "\ndd/mm/yyyy\nmm/dd/yyyy\nyyyy-mm-dd",
+   "description": "Blank = inherit org default"
+  },
+  {
+   "fieldname": "ui_language",
+   "fieldtype": "Data",
+   "label": "UI Language",
+   "description": "Language code (e.g. de, en). Blank = inherit org default."
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock User Preference",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "if_owner": 1,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock User",
+   "share": 0,
+   "write": 1
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "if_owner": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

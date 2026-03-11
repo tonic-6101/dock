@@ -1,0 +1,113 @@
+{
+ "actions": [],
+ "autoname": "format:DGA-{####}",
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "session",
+  "event_type",
+  "view_id",
+  "timestamp",
+  "section_client",
+  "ip_address",
+  "user_agent",
+  "metadata"
+ ],
+ "fields": [
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Session",
+   "options": "Dock Guest Session",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Event Type",
+   "options": "viewed\nagreed",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "viewed (community) | agreed (Pro) | custom types via domain apps"
+  },
+  {
+   "fieldname": "view_id",
+   "fieldtype": "Data",
+   "label": "View ID",
+   "description": "Which registered view was accessed"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_client",
+   "fieldtype": "Section Break",
+   "label": "Client Info (GDPR Art. 13)"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "read_only": 1,
+   "description": "Personal data — subject to GDPR Art. 17 erasure"
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Data",
+   "label": "User Agent",
+   "length": 500,
+   "read_only": 1,
+   "description": "Personal data — subject to GDPR Art. 17 erasure"
+  },
+  {
+   "fieldname": "metadata",
+   "fieldtype": "Small Text",
+   "label": "Metadata",
+   "description": "Optional JSON for domain app custom data (e.g. {\"duration_seconds\": 142})"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Guest Activity",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock User",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "timestamp",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

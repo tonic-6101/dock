@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2024-2026 Tonic */
+
+/* Ecosystem-wide design tokens for the top bar.
+   All ecosystem apps use these same properties in their fallback navbars. */
+
+:root {
+  --dock-bg:     theme('colors.white');
+  --dock-border: theme('colors.gray.200');
+  --dock-text:   theme('colors.gray.900');
+  --dock-icon:   theme('colors.gray.500');
+  --dock-accent: theme('colors.indigo.600');
+}
+
+.dark {
+  --dock-bg:     theme('colors.gray.900');
+  --dock-border: theme('colors.gray.700');
+  --dock-text:   theme('colors.gray.100');
+  --dock-icon:   theme('colors.gray.400');
+  --dock-accent: theme('colors.indigo.400');
+}

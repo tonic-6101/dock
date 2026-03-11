@@ -1,0 +1,137 @@
+{
+ "actions": [],
+ "autoname": "format:DGS-{####}",
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "token",
+  "label",
+  "view_id",
+  "source_app",
+  "source_doctype",
+  "source_name",
+  "created_by",
+  "section_access",
+  "is_active",
+  "expires_at",
+  "last_accessed_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "token",
+   "fieldtype": "Data",
+   "label": "Token",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "description": "32-char URL-safe random string, prefixed dgs_. This IS the password."
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Human label for admin list (e.g. Apollo Rebrand)"
+  },
+  {
+   "fieldname": "view_id",
+   "fieldtype": "Data",
+   "label": "View ID",
+   "reqd": 1,
+   "description": "Registered dock_guest_views view ID (e.g. orga.project_status)"
+  },
+  {
+   "fieldname": "source_app",
+   "fieldtype": "Data",
+   "label": "Source App",
+   "reqd": 1,
+   "description": "App that owns this session (e.g. orga, micro)"
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Data",
+   "label": "Source DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Data",
+   "label": "Source Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "Who created this session. Used for ownership permission checks."
+  },
+  {
+   "fieldname": "section_access",
+   "fieldtype": "Section Break",
+   "label": "Access"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Active",
+   "default": "1",
+   "in_list_view": 1,
+   "description": "0 = manually revoked. Expiry is separate (expires_at)."
+  },
+  {
+   "fieldname": "expires_at",
+   "fieldtype": "Datetime",
+   "label": "Expires At",
+   "description": "Blank = no expiry"
+  },
+  {
+   "fieldname": "last_accessed_at",
+   "fieldtype": "Datetime",
+   "label": "Last Accessed",
+   "read_only": 1,
+   "description": "Updated on each log_activity() call"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Guest Session",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock User",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

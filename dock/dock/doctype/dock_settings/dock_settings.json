@@ -1,0 +1,188 @@
+{
+ "actions": [],
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "theme",
+  "timezone",
+  "week_start",
+  "date_format",
+  "default_app",
+  "site_label",
+  "section_features",
+  "enable_global_timer",
+  "enable_bookmarks",
+  "enable_recent_items",
+  "recent_items_limit",
+  "section_notifications",
+  "notification_retention_days",
+  "section_guest_portal",
+  "guest_session_default_expiry_days",
+  "privacy_policy_url",
+  "section_advanced",
+  "frappe_manager_url",
+  "app_order"
+ ],
+ "fields": [
+  {
+   "fieldname": "theme",
+   "fieldtype": "Select",
+   "label": "Theme",
+   "options": "light\ndark\nsystem",
+   "default": "system"
+  },
+  {
+   "fieldname": "timezone",
+   "fieldtype": "Data",
+   "label": "Timezone",
+   "description": "IANA timezone string (e.g. Europe/Berlin, UTC)"
+  },
+  {
+   "fieldname": "week_start",
+   "fieldtype": "Select",
+   "label": "Week Start",
+   "options": "Monday\nSunday",
+   "default": "Monday"
+  },
+  {
+   "fieldname": "date_format",
+   "fieldtype": "Select",
+   "label": "Date Format",
+   "options": "dd/mm/yyyy\nmm/dd/yyyy\nyyyy-mm-dd",
+   "default": "dd/mm/yyyy"
+  },
+  {
+   "fieldname": "default_app",
+   "fieldtype": "Data",
+   "label": "Default App",
+   "description": "Route of app to open on login (e.g. /orga)"
+  },
+  {
+   "fieldname": "site_label",
+   "fieldtype": "Data",
+   "label": "Site Label",
+   "description": "Display name in top bar. Falls back to site name when blank."
+  },
+  {
+   "fieldname": "section_features",
+   "fieldtype": "Section Break",
+   "label": "Features"
+  },
+  {
+   "fieldname": "enable_global_timer",
+   "fieldtype": "Check",
+   "label": "Enable Global Timer",
+   "default": "1"
+  },
+  {
+   "fieldname": "enable_bookmarks",
+   "fieldtype": "Check",
+   "label": "Enable Bookmarks",
+   "default": "1"
+  },
+  {
+   "fieldname": "enable_recent_items",
+   "fieldtype": "Check",
+   "label": "Enable Recent Items",
+   "default": "1"
+  },
+  {
+   "fieldname": "recent_items_limit",
+   "fieldtype": "Int",
+   "label": "Recent Items Limit",
+   "default": "20",
+   "description": "Max recent items tracked per user"
+  },
+  {
+   "fieldname": "section_notifications",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "fieldname": "notification_retention_days",
+   "fieldtype": "Int",
+   "label": "Notification Retention (days)",
+   "default": "90",
+   "description": "Days to keep read notifications before scheduled cleanup"
+  },
+  {
+   "fieldname": "section_guest_portal",
+   "fieldtype": "Section Break",
+   "label": "Guest Portal"
+  },
+  {
+   "fieldname": "guest_session_default_expiry_days",
+   "fieldtype": "Int",
+   "label": "Default Session Expiry (days)",
+   "default": "30",
+   "description": "Default expiry for new guest sessions. 0 = no expiry."
+  },
+  {
+   "fieldname": "privacy_policy_url",
+   "fieldtype": "Data",
+   "label": "Privacy Policy URL",
+   "description": "Shown in Guest Portal footer. Required for GDPR Art. 13 transparency when guest activity (IP, user agent) is logged."
+  },
+  {
+   "fieldname": "section_advanced",
+   "fieldtype": "Section Break",
+   "label": "Advanced"
+  },
+  {
+   "fieldname": "frappe_manager_url",
+   "fieldtype": "Data",
+   "label": "Frappe Manager URL",
+   "permlevel": 1,
+   "description": "Base URL of Frappe Manager API (e.g. http://localhost:8000). When empty, one-click app management is replaced with CLI instructions."
+  },
+  {
+   "fieldname": "app_order",
+   "fieldtype": "Table",
+   "label": "App Order",
+   "options": "Dock App Order",
+   "description": "Controls order of apps in the top bar app switcher"
+  }
+ ],
+ "icon": "settings",
+ "is_single": 1,
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 1,
+   "permlevel": 0
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 1,
+   "permlevel": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

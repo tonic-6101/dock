@@ -1,0 +1,14 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_shared",
+  "dt": "Contact",
+  "fieldname": "dock_shared",
+  "fieldtype": "Check",
+  "label": "Share with team (People Hub)",
+  "default": "0",
+  "insert_after": "status",
+  "module": "Dock",
+  "owner": "Administrator"
+ }
+]

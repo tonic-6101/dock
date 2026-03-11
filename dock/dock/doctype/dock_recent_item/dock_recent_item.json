@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "autoname": "format:DRI-{####}",
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "app",
+  "doctype",
+  "docname",
+  "label",
+  "icon",
+  "visited_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "app",
+   "fieldtype": "Data",
+   "label": "App",
+   "reqd": 1,
+   "description": "Source app (e.g. orga)"
+  },
+  {
+   "fieldname": "doctype",
+   "fieldtype": "Data",
+   "label": "DocType",
+   "reqd": 1,
+   "description": "DocType name (e.g. Orga Project)"
+  },
+  {
+   "fieldname": "docname",
+   "fieldtype": "Data",
+   "label": "Document Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "in_list_view": 1,
+   "description": "Display label (project name, task subject, etc.)"
+  },
+  {
+   "fieldname": "icon",
+   "fieldtype": "Data",
+   "label": "Icon"
+  },
+  {
+   "fieldname": "visited_at",
+   "fieldtype": "Datetime",
+   "label": "Visited At",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Last visited timestamp — updated on each visit (upsert)"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Recent Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "All",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "visited_at",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

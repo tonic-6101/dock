@@ -1,0 +1,1 @@
+import{I as t,w as a,x as s,C as o}from"../dock-navbar.esm.js";const r={name:"DockCalendarPage"},n={class:"p-8"};function c(d,e,l,p,i,x){return a(),s("div",n,[...e[0]||(e[0]=[o("h1",{class:"text-2xl font-semibold text-gray-900 dark:text-white"},"Calendar",-1)])])}const f=t(r,[["render",c]]);export{f as default};
