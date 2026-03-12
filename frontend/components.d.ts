@@ -15,6 +15,8 @@ declare module 'vue' {
     DockBookmarks: typeof import('./src/components/DockBookmarks.vue')['default']
     DockBookmarkTile: typeof import('./src/components/DockBookmarkTile.vue')['default']
     DockCalendarIcon: typeof import('./src/components/DockCalendarIcon.vue')['default']
+    DockCreateEventModal: typeof import('./src/components/calendar/DockCreateEventModal.vue')['default']
+    DockEventManagerPanel: typeof import('./src/components/calendar/DockEventManagerPanel.vue')['default']
     DockFallbackBar: typeof import('./src/components/DockFallbackBar.vue')['default']
     DockGuestError: typeof import('./src/components/guest/DockGuestError.vue')['default']
     DockGuestShareButton: typeof import('./src/components/guest/DockGuestShareButton.vue')['default']

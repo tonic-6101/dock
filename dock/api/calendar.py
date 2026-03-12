@@ -32,6 +32,59 @@ def get_events(start: str, end: str, sources: list = None) -> list:
 
 
 @frappe.whitelist()
+def create_event(
+    title: str,
+    start_datetime: str,
+    end_datetime: str = None,
+    all_day: int = 0,
+    event_type: str = "Meeting",
+    description: str = None,
+    color: str = None,
+) -> dict:
+    """
+    Creates a native Dock Event (source_app = 'dock').
+    Called from DockCreateEventModal.
+    """
+    doc = frappe.get_doc({
+        "doctype": "Dock Event",
+        "title": title,
+        "start_datetime": start_datetime,
+        "end_datetime": end_datetime or None,
+        "all_day": int(all_day),
+        "event_type": event_type,
+        "description": description or None,
+        "color": color or None,
+        "source_app": "dock",
+        "source_doctype": "Dock Event",
+        "source_name": "pending",
+        "url": "",
+        "user": frappe.session.user,
+    })
+    doc.flags.ignore_permissions = True
+    doc.flags.ignore_mandatory = True
+    doc.insert(ignore_permissions=True, ignore_mandatory=True)
+    # Back-fill source_name with the auto-assigned name
+    frappe.db.set_value("Dock Event", doc.name, "source_name", doc.name, update_modified=False)
+    doc.source_name = doc.name
+    return doc.as_dict()
+
+
+@frappe.whitelist()
+def delete_event(name: str) -> dict:
+    """
+    Deletes a native Dock Event (source_app = 'dock' only).
+    Other events are read-only mirrors — users must delete from the source app.
+    """
+    doc = frappe.get_doc("Dock Event", name)
+    if doc.source_app != "dock":
+        frappe.throw(frappe._("Only native Dock events can be deleted here."))
+    if doc.user != frappe.session.user:
+        frappe.throw(frappe._("You can only delete your own events."))
+    doc.delete(ignore_permissions=True)
+    return {"deleted": name}
+
+
+@frappe.whitelist()
 def get_sources() -> list:
     """
     Returns apps that declare dock_calendar_sources, merged with dock_app_registry

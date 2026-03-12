@@ -1,1 +1,0 @@
-import{N as e,C as o,D as s,E as a}from"../dock-navbar.esm.js";const n={name:"DockNotFoundPage"},r={class:"p-8"};function c(d,t,p,f,i,l){return o(),s("div",r,[...t[0]||(t[0]=[a("h1",{class:"text-2xl font-semibold text-gray-900 dark:text-white"},"Page not found",-1)])])}const u=e(n,[["render",c]]);export{u as default};

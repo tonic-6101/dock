@@ -8,10 +8,13 @@ export default { name: 'DockCalendarPage' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { ChevronLeft, ChevronRight, ExternalLink, X, Plus } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-vue-next'
 import { callApi } from '@/composables/useApi'
 import { useDockBoot } from '@/composables/useDockBoot'
 import { __ } from '@/composables/useTranslate'
+import DockCreateEventModal from '@/components/calendar/DockCreateEventModal.vue'
+import DockEventManagerPanel from '@/components/calendar/DockEventManagerPanel.vue'
+import type { DockEvent as DockEventType } from '@/types/dock'
 
 interface DockEvent {
   name: string
@@ -57,6 +60,8 @@ const events = ref<DockEvent[]>([])
 const loading = ref(false)
 const selectedEvent = ref<DockEvent | null>(null)
 const createTarget = ref<{ date: Date; hour: number } | null>(null)
+const showCreateModal = ref(false)
+const createModalDate = ref<Date | null>(null)
 const now = ref(new Date())
 let clockTimer: ReturnType<typeof setInterval>
 const gridRef = ref<HTMLElement | null>(null)
@@ -247,6 +252,20 @@ function toggleSource(app: string) {
   localStorage.setItem(STORAGE_HIDDEN, JSON.stringify([...next]))
 }
 
+function openCreateModal(date?: Date) {
+  createModalDate.value = date ?? new Date()
+  showCreateModal.value = true
+}
+
+function onEventCreated(event: DockEventType) {
+  events.value = [...events.value, event as unknown as DockEvent]
+}
+
+function onEventDeleted(name: string) {
+  events.value = events.value.filter(e => e.name !== name)
+  selectedEvent.value = null
+}
+
 watch(view, v => { localStorage.setItem(STORAGE_VIEW, v); fetchEvents(); if (v === 'week') scrollToCurrentTime() })
 watch(weekStart, () => { if (view.value === 'week') fetchEvents() })
 watch(monthStart, () => { if (view.value === 'month') fetchEvents() })
@@ -365,7 +384,16 @@ onUnmounted(() => clearInterval(clockTimer))
         <h2 class="text-sm font-medium text-[var(--dock-text)] ml-2">
           {{ view === 'week' ? weekLabel : monthLabel }}
         </h2>
-        <div class="ml-auto flex rounded-md border border-[var(--dock-border)] overflow-hidden" role="tablist">
+        <div class="ml-auto flex items-center gap-2">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                 bg-[var(--dock-icon)] text-white hover:opacity-90 transition-opacity"
+          @click="openCreateModal()"
+        >
+          <Plus class="w-3.5 h-3.5" />
+          {{ __('New Event') }}
+        </button>
+        <div class="flex rounded-md border border-[var(--dock-border)] overflow-hidden" role="tablist">
           <button
             v-for="v in (['week', 'month'] as CalendarView[])" :key="v"
             role="tab" :aria-selected="view === v"
@@ -376,6 +404,7 @@ onUnmounted(() => clearInterval(clockTimer))
             {{ __(v === 'week' ? 'Week' : 'Month') }}
           </button>
         </div>
+        </div><!-- /ml-auto flex items-center gap-2 -->
       </div>
 
       <!-- Week view -->
@@ -511,41 +540,16 @@ onUnmounted(() => clearInterval(clockTimer))
       </template>
     </div>
 
-    <!-- Event detail popover -->
-    <Teleport to="body">
-      <div
-        v-if="selectedEvent"
-        role="dialog" :aria-label="selectedEvent.title"
-        class="fixed right-4 top-16 w-72 rounded-xl shadow-xl z-50 bg-[var(--dock-bg)] border border-[var(--dock-border)]"
-      >
-        <div class="h-1.5 rounded-t-xl" :style="{ backgroundColor: eventColor(selectedEvent) }" />
-        <div class="p-4">
-          <div class="flex items-start justify-between gap-2 mb-3">
-            <h3 class="text-sm font-semibold text-[var(--dock-text)] leading-snug">{{ selectedEvent.title }}</h3>
-            <button class="shrink-0 text-[var(--dock-icon)] hover:text-[var(--dock-text)]" @click="selectedEvent = null">
-              <X class="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div class="text-xs text-[var(--dock-icon)] space-y-1 mb-3">
-            <div v-if="selectedEvent.all_day">{{ __('All day') }}</div>
-            <template v-else>
-              <div>{{ formatDateShort(new Date(selectedEvent.start_datetime)) }} · {{ formatTime(selectedEvent.start_datetime) }}</div>
-              <div v-if="selectedEvent.end_datetime">→ {{ formatTime(selectedEvent.end_datetime) }}</div>
-            </template>
-            <div class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: eventColor(selectedEvent) }" />
-              <span class="capitalize">{{ selectedEvent.source_app }}</span>
-              <span v-if="selectedEvent.event_type">· {{ selectedEvent.event_type.split('.').pop() }}</span>
-            </div>
-          </div>
-          <a :href="selectedEvent.url"
-            class="flex items-center gap-1.5 text-xs font-medium text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors">
-            <ExternalLink class="w-3.5 h-3.5" />
-            {{ __('Open in') }} {{ selectedEvent.source_app }}
-          </a>
-        </div>
-      </div>
+    <!-- Manager Panel (inline on desktop, overlay on mobile) -->
+    <DockEventManagerPanel
+      v-if="selectedEvent"
+      :event="selectedEvent as unknown as DockEventType"
+      @close="selectedEvent = null"
+      @deleted="onEventDeleted"
+    />
 
+    <!-- Create picker (Teleport) -->
+    <Teleport to="body">
       <!-- Create picker -->
       <div
         v-if="createTarget"
@@ -574,5 +578,12 @@ onUnmounted(() => clearInterval(clockTimer))
         </div>
       </div>
     </Teleport>
+
+    <DockCreateEventModal
+      :show="showCreateModal"
+      :initial-date="createModalDate"
+      @close="showCreateModal = false"
+      @created="onEventCreated"
+    />
   </div>
 </template>
