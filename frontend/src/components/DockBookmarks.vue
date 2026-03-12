@@ -12,7 +12,7 @@ export default { name: 'DockBookmarks' }
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Pencil, Check } from 'lucide-vue-next'
+import { Pencil } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useBookmarks } from '@/composables/useBookmarks'
 import DockBookmarkTile from './DockBookmarkTile.vue'
@@ -55,10 +55,11 @@ function navigate(route: string) {
       </span>
       <button
         class="text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
-        :aria-label="editMode ? __('Done editing') : __('Edit bookmarks')"
+        :aria-label="__('Edit bookmarks')"
+        :aria-pressed="editMode"
         @click="editMode ? finishEdit() : (editMode = true)"
       >
-        <Check v-if="editMode" class="w-3.5 h-3.5" />
+        <span v-if="editMode" class="text-[10px] font-semibold">{{ __('Done') }}</span>
         <Pencil v-else class="w-3.5 h-3.5" />
       </button>
     </div>

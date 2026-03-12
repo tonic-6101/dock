@@ -32,6 +32,8 @@ def extend_bootinfo(bootinfo):
             # frappe_manager_url intentionally excluded — server-only, permlevel 1
         },
         "registered_apps": _get_registered_apps(),
+        # calendar_sources — seeded at boot to drive sidebar toggles + create picker
+        "calendar_sources": _get_calendar_sources(),
         # notification_types: dict keyed by type for O(1) icon/label resolution
         "notification_types": _get_notification_types(),
         # Bell badge — avoids extra API call on mount
@@ -52,9 +54,32 @@ def _get_registered_apps():
     registered = []
     for app in frappe.get_installed_apps():
         registry = frappe.get_hooks("dock_app_registry", app_name=app)
-        if registry:
-            registered.append({"app": app, **registry[0]})
+        if not registry:
+            continue
+        # get_hooks may return the raw dict or a list-wrapped dict
+        entry = registry if isinstance(registry, dict) else registry[0]
+        # Frappe normalizes hook values to lists — unwrap single-item lists
+        unwrapped = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in entry.items()}
+        registered.append({"app": app, **unwrapped})
     return registered
+
+
+def _get_calendar_sources():
+    """Returns apps that declare dock_calendar_sources, merged with registry color/label."""
+    registered = {r["app"]: r for r in _get_registered_apps()}
+    sources = []
+    for app in frappe.get_installed_apps():
+        decl = frappe.get_hooks("dock_calendar_sources", app_name=app)
+        if decl:
+            reg = registered.get(app, {})
+            sources.append({
+                "app": app,
+                "label": reg.get("label", app),
+                "color": reg.get("color", "#6b7280"),
+                "event_label": decl[0].get("event_label", "Event"),
+                "create_route_template": decl[0].get("create_route_template"),
+            })
+    return sources
 
 
 def _get_notification_types():

@@ -112,7 +112,7 @@ onUnmounted(() => {
       <div
         v-if="open"
         class="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg border border-[var(--dock-border)]
-               bg-white dark:bg-[#1a1f2e] py-1 z-20"
+               bg-[var(--dock-bg)] py-1 z-20"
         role="menu"
       >
         <!-- § 1 — Identity header -->

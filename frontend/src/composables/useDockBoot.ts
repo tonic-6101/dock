@@ -10,7 +10,8 @@ export function useDockBoot() {
   const isInstalled = computed(() => Boolean(dock.value?.installed))
   const settings = computed(() => dock.value?.settings ?? null)
   const registeredApps = computed(() => dock.value?.registered_apps ?? [])
+  const calendarSources = computed(() => dock.value?.calendar_sources ?? [])
   const notificationTypes = computed(() => dock.value?.notification_types ?? [])
 
-  return { dock, isInstalled, settings, registeredApps, notificationTypes }
+  return { dock, isInstalled, settings, registeredApps, calendarSources, notificationTypes }
 }

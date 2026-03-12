@@ -17,7 +17,6 @@ import { Bookmark, BookmarkCheck } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useBookmarks } from '@/composables/useBookmarks'
 import { useRecentItems } from '@/composables/useRecentItems'
-import { useDockBoot } from '@/composables/useDockBoot'
 
 interface ParsedRoute {
   app: string
@@ -27,17 +26,8 @@ interface ParsedRoute {
 
 const props = defineProps<{ currentPath: string }>()
 
-const { bookmarks, atLimit, isBookmarked, addBookmark, removeBookmark } = useBookmarks()
+const { atLimit, isBookmarked, addBookmark, removeBookmark } = useBookmarks()
 const { items: recentItems } = useRecentItems()
-const { registeredApps } = useDockBoot()
-
-const appColorMap = computed(() => {
-  const map: Record<string, string> = {}
-  for (const a of (registeredApps.value as Array<{ app: string; color?: string }>) ?? []) {
-    if (a.color) map[a.app] = a.color
-  }
-  return map
-})
 
 const parsed = computed<ParsedRoute | null>(() => {
   const match = props.currentPath.match(/^\/([^/]+)\/([^/]+)\/([^/]+)$/)
@@ -77,7 +67,6 @@ async function toggle() {
         docname: parsed.value.docname,
         label: recent?.label ?? parsed.value.docname,
         icon: recent?.icon ?? '',
-        color: appColorMap.value[parsed.value.app] ?? '',
       })
     }
   } finally {
@@ -96,9 +85,9 @@ async function toggle() {
         : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10',
       (atLimit && !isPinned) && 'opacity-40 cursor-not-allowed',
     ]"
-    :aria-label="isPinned ? __('Remove bookmark') : __('Add bookmark')"
+    :aria-label="isPinned ? __('Remove bookmark') : __('Bookmark this record')"
     :disabled="loading || (atLimit && !isPinned)"
-    :title="atLimit && !isPinned ? __('Bookmark limit reached (12)') : undefined"
+    :title="atLimit && !isPinned ? __('Bookmark limit reached (12). Remove a bookmark to add another.') : undefined"
     @click="toggle"
   >
     <BookmarkCheck v-if="isPinned" class="w-4 h-4" />

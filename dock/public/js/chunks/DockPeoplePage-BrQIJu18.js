@@ -1,0 +1,1 @@
+import{N as t,C as o,D as s,E as a}from"../dock-navbar.esm.js";const r={name:"DockPeoplePage"},c={class:"p-8"};function n(p,e,l,d,i,_){return o(),s("div",c,[...e[0]||(e[0]=[a("h1",{class:"text-2xl font-semibold text-gray-900 dark:text-white"},"People",-1)])])}const x=t(r,[["render",n]]);export{x as default};

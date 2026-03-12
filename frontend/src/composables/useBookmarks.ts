@@ -14,7 +14,6 @@ export interface Bookmark {
   docname: string
   label: string
   icon: string
-  color: string
   sort_order: number
 }
 

@@ -16,6 +16,9 @@ import DockPinButton from './DockPinButton.vue'
 import { useDockBoot } from '@/composables/useDockBoot'
 import { useRecentItems } from '@/composables/useRecentItems'
 import { useBookmarks } from '@/composables/useBookmarks'
+import { useSidebar } from '@/composables/useSidebar'
+
+const { toggle: toggleSidebar } = useSidebar()
 
 const crashed  = ref(false)
 const scrolled = ref(false)
@@ -110,6 +113,7 @@ const DockAppLabel        = defineAsyncComponent(() => import('./DockAppLabel.vu
 const DockSearch          = defineAsyncComponent(() => import('./DockSearch.vue'))
 const DockTimer           = defineAsyncComponent(() => import('./DockTimer.vue'))
 const DockTimerStaleWarning = defineAsyncComponent(() => import('./DockTimerStaleWarning.vue'))
+const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -127,7 +131,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
     :class="scrolled ? 'shadow-sm' : 'border-b border-[var(--dock-border)] border-opacity-50'"
   >
     <!-- Sidebar toggle -->
-    <DockSidebarToggle class="flex-shrink-0" />
+    <DockSidebarToggle class="flex-shrink-0" @toggle="toggleSidebar" />
 
     <!-- App label -->
     <DockAppLabel class="flex-shrink-0" />
@@ -141,6 +145,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
     <div class="flex items-center gap-1 flex-shrink-0">
       <DockPinButton :current-path="currentPath" />
       <DockTimer />
+      <DockCalendarIcon />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

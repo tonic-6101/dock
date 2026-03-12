@@ -21,6 +21,6 @@ import { Menu } from 'lucide-vue-next'
     title="Toggle sidebar"
     @click="$emit('toggle')"
   >
-    <Menu class="w-4 h-4" />
+    <Menu class="w-5 h-5" />
   </button>
 </template>

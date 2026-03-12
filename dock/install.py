@@ -9,6 +9,7 @@ def after_install():
     _create_role("Dock Manager", desk_access=1)
     _create_dock_settings()
     _assign_dock_user_to_existing_users()
+    _backfill_calendar()
     frappe.clear_cache()
     frappe.db.commit()
     frappe.msgprint(
@@ -55,6 +56,19 @@ def _create_dock_settings():
     }
     if to_set:
         frappe.db.set_single_value("Dock Settings", to_set)
+
+
+def _backfill_calendar():
+    """Call dock_backfill_calendar hook on each installed app that declares it."""
+    for app in frappe.get_installed_apps():
+        for fn_path in frappe.get_hooks("dock_backfill_calendar", app_name=app):
+            try:
+                frappe.get_attr(fn_path)()
+            except Exception:
+                frappe.log_error(
+                    frappe.get_traceback(),
+                    f"dock_backfill_calendar failed: {fn_path}",
+                )
 
 
 def _assign_dock_user_to_existing_users():
