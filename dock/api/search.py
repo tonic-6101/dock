@@ -79,8 +79,12 @@ def _search_section(app_name: str, section: dict, query: str, per_section: int) 
     """Execute a search against one section using frappe.db.get_list() for automatic permissions.
 
     Sections may declare:
-      extra_fields:  list of additional field names to fetch (used by visibility_fn, stripped from output)
-      visibility_fn: dotted path to a function(rows: list[dict]) -> list[dict] for post-fetch filtering
+      extra_fields:     list of additional field names to fetch (used by visibility_fn, stripped from output)
+      visibility_fn:    dotted path to a function(rows: list[dict]) -> list[dict] for post-fetch filtering
+      description_field: field name to use as secondary description line in results
+      status_field:     field name to use as status badge in results
+      meta_field:       field name to use as tertiary metadata (date, priority, etc.)
+      category:         category key for status badge interpretation (e.g. "task" for priority badges)
     """
     doctype = section.get("doctype")
     search_fields = section.get("search_fields") or ["name"]
@@ -88,13 +92,22 @@ def _search_section(app_name: str, section: dict, query: str, per_section: int) 
     route_template = section.get("route_template") or ""
     extra_fields = section.get("extra_fields") or []
     visibility_fn = section.get("visibility_fn")
+    description_field = section.get("description_field")
+    status_field = section.get("status_field")
+    meta_field = section.get("meta_field")
+    category = section.get("category")
 
     if not doctype or not frappe.db.exists("DocType", doctype):
         return []
 
     q = f"%{query}%"
     or_filters = [[f, "like", q] for f in search_fields]
+
+    # Build field set — include optional enrichment fields
     fields = list({display_field, "name"} | set(extra_fields))
+    for f in (description_field, status_field, meta_field):
+        if f and f not in fields:
+            fields.append(f)
 
     try:
         rows = frappe.db.get_list(
@@ -119,7 +132,7 @@ def _search_section(app_name: str, section: dict, query: str, per_section: int) 
     for row in rows:
         label = row.get(display_field) or row["name"]
         route = route_template.replace("{name}", row["name"])
-        results.append({
+        item = {
             "label": label,
             "route": route,
             "app": app_name,
@@ -127,7 +140,19 @@ def _search_section(app_name: str, section: dict, query: str, per_section: int) 
             "doctype": doctype,
             "name": row["name"],
             "_score": 2 if str(label).lower().startswith(q_lower) else 1,
-        })
+        }
+
+        # Optional enrichment fields
+        if description_field and row.get(description_field):
+            item["description"] = str(row[description_field])
+        if status_field and row.get(status_field):
+            item["status"] = str(row[status_field])
+        if meta_field and row.get(meta_field):
+            item["meta"] = str(row[meta_field])
+        if category:
+            item["category"] = category
+
+        results.append(item)
 
     results.sort(key=lambda r: r["_score"], reverse=True)
     return [{k: v for k, v in r.items() if k != "_score"} for r in results]

@@ -1,0 +1,1 @@
+function a(o){const e=new Date(o),i=new Date().getTime()-e.getTime(),t=Math.floor(i/6e4);if(t<60)return`${Math.max(t,1)}m`;const n=Math.floor(t/60);return n<24?`${n}h`:e.toLocaleDateString(void 0,{month:"short",day:"numeric"})}export{a as r};
