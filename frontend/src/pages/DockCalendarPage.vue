@@ -39,7 +39,13 @@ interface CalendarSource {
   create_route_template?: string
 }
 
-type CalendarView = 'week' | 'month'
+interface EventLayout {
+  event: DockEvent
+  col: number
+  totalCols: number
+}
+
+type CalendarView = 'week' | 'month' | 'day' | 'agenda'
 
 const HOUR_HEIGHT = 60
 const STORAGE_HIDDEN = 'dock.calendar.hidden_sources'
@@ -64,6 +70,7 @@ const showCreateModal = ref(false)
 const createModalDate = ref<Date | null>(null)
 const now = ref(new Date())
 let clockTimer: ReturnType<typeof setInterval>
+let fetchTimer: ReturnType<typeof setTimeout> | null = null
 const gridRef = ref<HTMLElement | null>(null)
 
 const urlSource = ref<string | null>(null)
@@ -100,6 +107,31 @@ function eventColor(ev: DockEvent): string {
   const src = (calendarSources.value as CalendarSource[]).find(s => s.app === ev.source_app)
   return src?.color ?? '#6366f1'
 }
+
+// ── Side-by-side overlapping event layout ──────────────────────────────────
+
+function layoutDay(evs: DockEvent[]): EventLayout[] {
+  if (!evs.length) return []
+  const sorted = [...evs].sort((a, b) =>
+    new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+  )
+  const colEnds: number[] = []
+  const result: Array<{ event: DockEvent; col: number }> = []
+  for (const ev of sorted) {
+    const start = new Date(ev.start_datetime).getTime()
+    const end = ev.end_datetime
+      ? new Date(ev.end_datetime).getTime()
+      : start + 3_600_000
+    let col = colEnds.findIndex(e => e <= start)
+    if (col === -1) col = colEnds.length
+    colEnds[col] = end
+    result.push({ event: ev, col })
+  }
+  const totalCols = colEnds.length || 1
+  return result.map(r => ({ ...r, totalCols }))
+}
+
+// ── Week view computeds ────────────────────────────────────────────────────
 
 const weekStart = computed(() => startOfWeek(currentDate.value))
 
@@ -144,6 +176,8 @@ function allDayEventsForDay(d: Date): DockEvent[] {
   return filteredEvents.value.filter(ev => ev.all_day && ev.start_datetime.slice(0, 10) === dateKey(d))
 }
 
+// ── Month view computeds ───────────────────────────────────────────────────
+
 const monthStart = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1))
 const monthEnd   = computed(() => new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0))
 const monthLabel = computed(() => monthStart.value.toLocaleString('default', { month: 'long', year: 'numeric' }))
@@ -183,6 +217,43 @@ function isInCurrentWeek(d: Date): boolean {
   return d >= ws && d <= we
 }
 
+// ── Day view computeds ─────────────────────────────────────────────────────
+
+const dayLabel = computed(() =>
+  currentDate.value.toLocaleDateString([], {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  })
+)
+
+// ── Agenda view computeds ──────────────────────────────────────────────────
+
+const agendaEnd = computed(() => {
+  const d = new Date(currentDate.value)
+  d.setDate(d.getDate() + 30)
+  return d
+})
+
+const agendaLabel = computed(() =>
+  `${currentDate.value.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${agendaEnd.value.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+)
+
+const agendaDays = computed(() => {
+  const byDate: Record<string, DockEvent[]> = {}
+  for (const ev of filteredEvents.value) {
+    const dk = ev.start_datetime.slice(0, 10)
+    if (!byDate[dk]) byDate[dk] = []
+    byDate[dk].push(ev)
+  }
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, evs]) => ({
+      date,
+      events: evs.sort((a, b) => a.start_datetime.localeCompare(b.start_datetime)),
+    }))
+})
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+
 function jumpToDay(d: Date) {
   currentDate.value = new Date(d)
   if (view.value !== 'week') view.value = 'week'
@@ -191,18 +262,22 @@ function jumpToDay(d: Date) {
 function prev() {
   const d = new Date(currentDate.value)
   if (view.value === 'week') d.setDate(d.getDate() - 7)
-  else { d.setDate(1); d.setMonth(d.getMonth() - 1) }
+  else if (view.value === 'month') { d.setDate(1); d.setMonth(d.getMonth() - 1) }
+  else d.setDate(d.getDate() - 1)
   currentDate.value = d
 }
 
 function next() {
   const d = new Date(currentDate.value)
   if (view.value === 'week') d.setDate(d.getDate() + 7)
-  else { d.setDate(1); d.setMonth(d.getMonth() + 1) }
+  else if (view.value === 'month') { d.setDate(1); d.setMonth(d.getMonth() + 1) }
+  else d.setDate(d.getDate() + 1)
   currentDate.value = d
 }
 
 function goToday() { currentDate.value = new Date() }
+
+// ── Data fetching ──────────────────────────────────────────────────────────
 
 async function fetchEvents() {
   loading.value = true
@@ -211,12 +286,20 @@ async function fetchEvents() {
     if (view.value === 'week') {
       start = `${dateKey(weekDays.value[0])} 00:00:00`
       end   = `${dateKey(weekDays.value[6])} 23:59:59`
-    } else {
+    } else if (view.value === 'month') {
       const y = currentDate.value.getFullYear()
       const m = String(currentDate.value.getMonth() + 1).padStart(2, '0')
       const last = String(monthEnd.value.getDate()).padStart(2, '0')
       start = `${y}-${m}-01 00:00:00`
       end   = `${y}-${m}-${last} 23:59:59`
+    } else if (view.value === 'day') {
+      const d = dateKey(currentDate.value)
+      start = `${d} 00:00:00`
+      end   = `${d} 23:59:59`
+    } else {
+      // agenda: 30 days forward
+      start = `${dateKey(currentDate.value)} 00:00:00`
+      end   = `${dateKey(agendaEnd.value)} 23:59:59`
     }
     const args: Record<string, unknown> = { start, end }
     if (urlSource.value) args.sources = [urlSource.value]
@@ -225,6 +308,13 @@ async function fetchEvents() {
     loading.value = false
   }
 }
+
+function debouncedFetch() {
+  if (fetchTimer) clearTimeout(fetchTimer)
+  fetchTimer = setTimeout(() => { fetchTimer = null; fetchEvents() }, 200)
+}
+
+// ── Slot / create interactions ─────────────────────────────────────────────
 
 function onSlotClick(day: Date, hour: number) {
   const sources = calendarSources.value as CalendarSource[]
@@ -266,20 +356,32 @@ function onEventDeleted(name: string) {
   selectedEvent.value = null
 }
 
-watch(view, v => { localStorage.setItem(STORAGE_VIEW, v); fetchEvents(); if (v === 'week') scrollToCurrentTime() })
-watch(weekStart, () => { if (view.value === 'week') fetchEvents() })
-watch(monthStart, () => { if (view.value === 'month') fetchEvents() })
+// ── Watchers ───────────────────────────────────────────────────────────────
+
+watch(view, v => {
+  localStorage.setItem(STORAGE_VIEW, v)
+  debouncedFetch()
+  if (v === 'week' || v === 'day') scrollToCurrentTime()
+})
+watch(weekStart, () => { if (view.value === 'week') debouncedFetch() })
+watch(monthStart, () => { if (view.value === 'month') debouncedFetch() })
+watch(currentDate, () => {
+  if (view.value === 'day' || view.value === 'agenda') debouncedFetch()
+})
 
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   urlSource.value = params.get('source')
   urlRef.value    = params.get('ref')
   await fetchEvents()
-  if (view.value === 'week') scrollToCurrentTime()
+  if (view.value === 'week' || view.value === 'day') scrollToCurrentTime()
   clockTimer = setInterval(() => { now.value = new Date() }, 60000)
 })
 
-onUnmounted(() => clearInterval(clockTimer))
+onUnmounted(() => {
+  clearInterval(clockTimer)
+  if (fetchTimer) clearTimeout(fetchTimer)
+})
 </script>
 
 <template>
@@ -382,34 +484,38 @@ onUnmounted(() => clearInterval(clockTimer))
           @click="goToday"
         >{{ __('Today') }}</button>
         <h2 class="text-sm font-medium text-[var(--dock-text)] ml-2">
-          {{ view === 'week' ? weekLabel : monthLabel }}
+          {{
+            view === 'week' ? weekLabel
+            : view === 'month' ? monthLabel
+            : view === 'day' ? dayLabel
+            : agendaLabel
+          }}
         </h2>
         <div class="ml-auto flex items-center gap-2">
-        <button
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
-                 bg-[var(--dock-icon)] text-white hover:opacity-90 transition-opacity"
-          @click="openCreateModal()"
-        >
-          <Plus class="w-3.5 h-3.5" />
-          {{ __('New Event') }}
-        </button>
-        <div class="flex rounded-md border border-[var(--dock-border)] overflow-hidden" role="tablist">
           <button
-            v-for="v in (['week', 'month'] as CalendarView[])" :key="v"
-            role="tab" :aria-selected="view === v"
-            class="px-3 py-1 text-xs font-medium transition-colors capitalize"
-            :class="view === v ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
-            @click="view = v"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                   bg-[var(--dock-icon)] text-white hover:opacity-90 transition-opacity"
+            @click="openCreateModal()"
           >
-            {{ __(v === 'week' ? 'Week' : 'Month') }}
+            <Plus class="w-3.5 h-3.5" />
+            {{ __('New Event') }}
           </button>
+          <div class="flex rounded-md border border-[var(--dock-border)] overflow-hidden" role="tablist">
+            <button
+              v-for="v in (['week', 'month', 'day', 'agenda'] as CalendarView[])" :key="v"
+              role="tab" :aria-selected="view === v"
+              class="px-3 py-1 text-xs font-medium transition-colors capitalize"
+              :class="view === v ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+              @click="view = v"
+            >
+              {{ __(v === 'week' ? 'Week' : v === 'month' ? 'Month' : v === 'day' ? 'Day' : 'Agenda') }}
+            </button>
+          </div>
         </div>
-        </div><!-- /ml-auto flex items-center gap-2 -->
       </div>
 
       <!-- Week view -->
       <template v-if="view === 'week'">
-        <!-- Day headers -->
         <div class="flex border-b border-[var(--dock-border)] shrink-0">
           <div class="w-14 shrink-0" />
           <div
@@ -424,8 +530,6 @@ onUnmounted(() => clearInterval(clockTimer))
             >{{ day.getDate() }}</div>
           </div>
         </div>
-
-        <!-- All-day row -->
         <div class="flex border-b border-[var(--dock-border)] shrink-0 min-h-[24px]">
           <div class="w-14 shrink-0 flex items-center justify-end pr-2">
             <span class="text-[9px] text-[var(--dock-icon)]">{{ __('All day') }}</span>
@@ -440,11 +544,8 @@ onUnmounted(() => clearInterval(clockTimer))
             >{{ ev.title }}</div>
           </div>
         </div>
-
-        <!-- Time grid -->
         <div ref="gridRef" class="flex-1 overflow-y-auto" :class="{ 'opacity-60': loading }">
           <div class="flex" :style="{ height: `${HOUR_HEIGHT * 24}px` }">
-            <!-- Hour labels -->
             <div class="w-14 shrink-0 relative select-none">
               <div
                 v-for="h in 23" :key="h"
@@ -452,38 +553,39 @@ onUnmounted(() => clearInterval(clockTimer))
                 :style="{ top: `${h * HOUR_HEIGHT - 6}px` }"
               >{{ String(h).padStart(2, '0') }}:00</div>
             </div>
-            <!-- Day columns -->
             <div
               v-for="day in weekDays" :key="dateKey(day)"
               class="flex-1 relative border-l border-[var(--dock-border)]"
               role="gridcell"
             >
-              <!-- Hour lines -->
               <div
                 v-for="h in 24" :key="h"
                 class="absolute w-full border-t border-[var(--dock-border)] opacity-40 pointer-events-none"
                 :style="{ top: `${(h - 1) * HOUR_HEIGHT}px` }"
               />
-              <!-- Current time indicator -->
               <div
                 v-if="isToday(day)"
                 class="absolute w-full h-px bg-red-400 z-10 pointer-events-none"
                 :style="{ top: `${currentTimeTop}px` }"
               />
-              <!-- Timed events -->
               <div
-                v-for="ev in timedEventsForDay(day)" :key="ev.name"
+                v-for="{ event: ev, col, totalCols } in layoutDay(timedEventsForDay(day))" :key="ev.name"
                 role="button"
                 :aria-label="`${ev.title} · ${formatTime(ev.start_datetime)} · ${ev.source_app}`"
-                class="absolute left-0.5 right-0.5 rounded px-1 py-0.5 cursor-pointer text-white
+                class="absolute rounded px-1 py-0.5 cursor-pointer text-white
                        overflow-hidden hover:opacity-90 transition-opacity z-20"
-                :style="{ top: `${eventTop(ev)}px`, height: `${eventHeight(ev)}px`, backgroundColor: eventColor(ev) }"
+                :style="{
+                  top: `${eventTop(ev)}px`,
+                  height: `${eventHeight(ev)}px`,
+                  left: `${(col / totalCols) * 100}%`,
+                  width: `calc(${(1 / totalCols) * 100}% - 2px)`,
+                  backgroundColor: eventColor(ev),
+                }"
                 @click.stop="selectedEvent = ev"
               >
                 <div class="text-[10px] font-medium truncate leading-tight">{{ ev.title }}</div>
                 <div v-if="eventHeight(ev) >= 30" class="text-[9px] opacity-75">{{ formatTime(ev.start_datetime) }}</div>
               </div>
-              <!-- Slot click areas -->
               <div
                 v-for="h in 24" :key="`s${h}`"
                 class="absolute w-full cursor-pointer hover:bg-[var(--dock-icon)]/5"
@@ -495,8 +597,83 @@ onUnmounted(() => clearInterval(clockTimer))
         </div>
       </template>
 
+      <!-- Day view -->
+      <template v-else-if="view === 'day'">
+        <div class="flex border-b border-[var(--dock-border)] shrink-0">
+          <div class="w-14 shrink-0" />
+          <div class="flex-1 text-center py-1 border-l border-[var(--dock-border)]" role="columnheader">
+            <div class="text-[10px] text-[var(--dock-icon)]">{{ currentDate.toLocaleString('default', { weekday: 'long' }) }}</div>
+            <div
+              class="w-6 h-6 mx-auto rounded-full flex items-center justify-center text-sm font-semibold"
+              :class="isToday(currentDate) ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-text)]'"
+            >{{ currentDate.getDate() }}</div>
+          </div>
+        </div>
+        <div class="flex border-b border-[var(--dock-border)] shrink-0 min-h-[24px]">
+          <div class="w-14 shrink-0 flex items-center justify-end pr-2">
+            <span class="text-[9px] text-[var(--dock-icon)]">{{ __('All day') }}</span>
+          </div>
+          <div class="flex-1 border-l border-[var(--dock-border)] p-0.5">
+            <div
+              v-for="ev in allDayEventsForDay(currentDate)" :key="ev.name"
+              role="button" :aria-label="`${ev.title} · ${ev.source_app}`"
+              class="text-[10px] text-white rounded px-1 truncate mb-0.5 cursor-pointer hover:opacity-90"
+              :style="{ backgroundColor: eventColor(ev) }"
+              @click="selectedEvent = ev"
+            >{{ ev.title }}</div>
+          </div>
+        </div>
+        <div ref="gridRef" class="flex-1 overflow-y-auto" :class="{ 'opacity-60': loading }">
+          <div class="flex" :style="{ height: `${HOUR_HEIGHT * 24}px` }">
+            <div class="w-14 shrink-0 relative select-none">
+              <div
+                v-for="h in 23" :key="h"
+                class="absolute right-2 text-[10px] text-[var(--dock-icon)] leading-none"
+                :style="{ top: `${h * HOUR_HEIGHT - 6}px` }"
+              >{{ String(h).padStart(2, '0') }}:00</div>
+            </div>
+            <div class="flex-1 relative border-l border-[var(--dock-border)]" role="gridcell">
+              <div
+                v-for="h in 24" :key="h"
+                class="absolute w-full border-t border-[var(--dock-border)] opacity-40 pointer-events-none"
+                :style="{ top: `${(h - 1) * HOUR_HEIGHT}px` }"
+              />
+              <div
+                v-if="isToday(currentDate)"
+                class="absolute w-full h-px bg-red-400 z-10 pointer-events-none"
+                :style="{ top: `${currentTimeTop}px` }"
+              />
+              <div
+                v-for="{ event: ev, col, totalCols } in layoutDay(timedEventsForDay(currentDate))" :key="ev.name"
+                role="button"
+                :aria-label="`${ev.title} · ${formatTime(ev.start_datetime)} · ${ev.source_app}`"
+                class="absolute rounded px-1 py-0.5 cursor-pointer text-white
+                       overflow-hidden hover:opacity-90 transition-opacity z-20"
+                :style="{
+                  top: `${eventTop(ev)}px`,
+                  height: `${eventHeight(ev)}px`,
+                  left: `${(col / totalCols) * 100}%`,
+                  width: `calc(${(1 / totalCols) * 100}% - 2px)`,
+                  backgroundColor: eventColor(ev),
+                }"
+                @click.stop="selectedEvent = ev"
+              >
+                <div class="text-[10px] font-medium truncate leading-tight">{{ ev.title }}</div>
+                <div v-if="eventHeight(ev) >= 30" class="text-[9px] opacity-75">{{ formatTime(ev.start_datetime) }}</div>
+              </div>
+              <div
+                v-for="h in 24" :key="`s${h}`"
+                class="absolute w-full cursor-pointer hover:bg-[var(--dock-icon)]/5"
+                :style="{ top: `${(h - 1) * HOUR_HEIGHT}px`, height: `${HOUR_HEIGHT}px` }"
+                @click="onSlotClick(currentDate, h - 1)"
+              />
+            </div>
+          </div>
+        </div>
+      </template>
+
       <!-- Month view -->
-      <template v-else>
+      <template v-else-if="view === 'month'">
         <div class="flex-1 overflow-auto px-4 py-3" :class="{ 'opacity-60': loading }">
           <div class="grid grid-cols-7 mb-1" role="row">
             <div v-for="h in weekDayHeaders" :key="h" class="text-xs font-medium text-[var(--dock-icon)] text-center pb-1" role="columnheader">
@@ -538,9 +715,59 @@ onUnmounted(() => clearInterval(clockTimer))
           </div>
         </div>
       </template>
+
+      <!-- Agenda view -->
+      <template v-else>
+        <div class="flex-1 overflow-auto px-4 py-3" :class="{ 'opacity-60': loading }">
+          <div v-if="!agendaDays.length" class="flex items-center justify-center h-32 text-sm text-[var(--dock-icon)]">
+            {{ __('No events') }}
+          </div>
+          <div v-else class="space-y-4">
+            <div v-for="group in agendaDays" :key="group.date">
+              <div class="flex items-center gap-3 mb-1">
+                <div
+                  class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                  :class="group.date === dateKey(now) ? 'bg-[var(--dock-icon)] text-white' : 'bg-black/5 dark:bg-white/10 text-[var(--dock-text)]'"
+                >
+                  {{ new Date(group.date + 'T00:00:00').getDate() }}
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-[var(--dock-text)]">
+                    {{ new Date(group.date + 'T00:00:00').toLocaleDateString([], { weekday: 'long' }) }}
+                  </div>
+                  <div class="text-[10px] text-[var(--dock-icon)]">
+                    {{ new Date(group.date + 'T00:00:00').toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) }}
+                  </div>
+                </div>
+              </div>
+              <div class="ml-11 space-y-1">
+                <button
+                  v-for="ev in group.events" :key="ev.name"
+                  role="button"
+                  :aria-label="`${ev.title} · ${formatTime(ev.start_datetime)} · ${ev.source_app}`"
+                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left
+                         border border-[var(--dock-border)] bg-[var(--dock-bg)]
+                         hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  @click="selectedEvent = ev"
+                >
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: eventColor(ev) }" />
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-[var(--dock-text)] truncate">{{ ev.title }}</div>
+                    <div class="text-[10px] text-[var(--dock-icon)]">
+                      <span v-if="ev.all_day">{{ __('All day') }}</span>
+                      <span v-else>{{ formatTime(ev.start_datetime) }}<span v-if="ev.end_datetime"> – {{ formatTime(ev.end_datetime) }}</span></span>
+                      <span class="ml-2">· {{ ev.source_app }}</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
-    <!-- Manager Panel (inline on desktop, overlay on mobile) -->
+    <!-- Manager Panel -->
     <DockEventManagerPanel
       v-if="selectedEvent"
       :event="selectedEvent as unknown as DockEventType"
@@ -548,9 +775,8 @@ onUnmounted(() => clearInterval(clockTimer))
       @deleted="onEventDeleted"
     />
 
-    <!-- Create picker (Teleport) -->
+    <!-- Create picker -->
     <Teleport to="body">
-      <!-- Create picker -->
       <div
         v-if="createTarget"
         role="dialog" :aria-label="__('Create in:')"

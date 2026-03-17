@@ -5,41 +5,41 @@ import { computed } from 'vue'
 
 export interface DockSettings {
   timezone: string
-  week_start: 'Monday' | 'Sunday' | ''
-  date_format: string
-  ui_language: string
+  weekStart: 'Monday' | 'Sunday'
+  dateFormat: string
+  uiLanguage: string
   currency: string
-  number_format: string
+  numberFormat: string
   theme: 'light' | 'dark' | 'system'
-  enable_global_timer: boolean
-  enable_bookmarks: boolean
-  enable_recent_items: boolean
-  recent_items_limit: number
-  site_label: string
-  default_app: string
+  enableGlobalTimer: boolean
+  enableBookmarks: boolean
+  enableRecentItems: boolean
+  recentItemsLimit: number
+  siteLabel: string
+  defaultApp: string
 }
 
 /** Merged settings from boot (user pref → org default → fallback).
  *  Works whether Dock is installed or not — all fallbacks built in. */
 export function useDockSettings() {
   const s = computed(() => {
-    const raw = window.frappe?.boot?.dock?.settings ?? (window as any).dockBoot?.settings
-    return raw as Partial<DockSettings> | undefined
+    const raw = (window as any).frappe?.boot?.dock?.settings ?? (window as any).dockBoot?.settings
+    return raw as Record<string, unknown> | undefined
   })
 
   return computed<DockSettings>(() => ({
-    timezone:          s.value?.timezone          ?? (window as any).frappe?.boot?.time_zone ?? 'UTC',
-    week_start:        s.value?.week_start         ?? 'Monday',
-    date_format:       s.value?.date_format        ?? 'dd/mm/yyyy',
-    ui_language:       s.value?.ui_language        ?? (window as any).frappe?.boot?.lang ?? 'en',
-    currency:          s.value?.currency           ?? 'EUR',
-    number_format:     s.value?.number_format      ?? '#.###,##',
-    theme:             s.value?.theme              ?? 'system',
-    enable_global_timer: s.value?.enable_global_timer ?? true,
-    enable_bookmarks:    s.value?.enable_bookmarks    ?? true,
-    enable_recent_items: s.value?.enable_recent_items ?? true,
-    recent_items_limit:  s.value?.recent_items_limit  ?? 20,
-    site_label:        s.value?.site_label         ?? '',
-    default_app:       s.value?.default_app        ?? '/app',
+    timezone:          (s.value?.timezone          as string)  ?? (window as any).frappe?.boot?.time_zone ?? 'UTC',
+    weekStart:         (s.value?.week_start        as 'Monday' | 'Sunday') ?? 'Monday',
+    dateFormat:        (s.value?.date_format       as string)  ?? 'dd/mm/yyyy',
+    uiLanguage:        (s.value?.ui_language       as string)  ?? (window as any).frappe?.boot?.lang ?? 'en',
+    currency:          (s.value?.currency          as string)  ?? 'EUR',
+    numberFormat:      (s.value?.number_format     as string)  ?? '#.###,##',
+    theme:             (s.value?.theme             as 'light' | 'dark' | 'system') ?? 'system',
+    enableGlobalTimer: (s.value?.enable_global_timer as boolean) ?? true,
+    enableBookmarks:   (s.value?.enable_bookmarks   as boolean) ?? true,
+    enableRecentItems: (s.value?.enable_recent_items as boolean) ?? true,
+    recentItemsLimit:  (s.value?.recent_items_limit  as number) ?? 20,
+    siteLabel:         (s.value?.site_label        as string)  ?? '',
+    defaultApp:        (s.value?.default_app       as string)  ?? '/app',
   }))
 }

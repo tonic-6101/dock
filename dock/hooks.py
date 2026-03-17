@@ -71,5 +71,25 @@ website_route_rules = [
     {"from_route": "/dock/<path:app_path>", "to_route": "dock"},
 ]
 
-# NOTE: Dock does NOT appear in add_to_apps_screen.
-# Dock is infrastructure — it renders the app switcher but is not itself a navigable app.
+# People Hub search integration — Dock registers Contact as a first-class search section
+dock_search_sections = [
+    {
+        "label": "People",
+        "doctype": "Contact",
+        "search_fields": ["full_name", "email_id", "phone"],
+        "display_field": "full_name",
+        "route_template": "/dock/people/{name}",
+        # extra_fields are fetched for filtering but stripped from search output
+        "extra_fields": ["owner", "dock_shared"],
+        # visibility_fn enforces the dock_shared privacy model on search results
+        "visibility_fn": "dock.api.people.search_visibility_filter",
+    },
+]
+
+# Dock appears in the app switcher as the ecosystem hub (settings, calendar, recent, etc.)
+dock_app_registry = {
+    "label": "Dock",
+    "icon": "/assets/dock/images/dock-icon.svg",
+    "color": "#6366f1",
+    "route": "/dock",
+}

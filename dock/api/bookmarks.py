@@ -15,13 +15,14 @@ def add(app: str, doctype: str, docname: str, label: str, icon: str = None) -> s
     """
     user = frappe.session.user
 
-    existing = frappe.db.get_value(
-        "Dock Bookmark",
-        {"user": user, "app": app, "doctype": doctype, "docname": docname},
-        "name",
+    # Use raw SQL for the existence check — frappe.db.get_value filters on the 'doctype'
+    # column conflict with Frappe's internal meta attribute of the same name.
+    existing = frappe.db.sql(
+        "SELECT name FROM `tabDock Bookmark` WHERE user=%s AND app=%s AND doctype=%s AND docname=%s LIMIT 1",
+        (user, app, doctype, docname),
     )
     if existing:
-        return existing
+        return existing[0][0]
 
     count = frappe.db.count("Dock Bookmark", {"user": user})
     if count >= _MAX_BOOKMARKS:
@@ -30,17 +31,18 @@ def add(app: str, doctype: str, docname: str, label: str, icon: str = None) -> s
             frappe.ValidationError,
         )
 
-    doc = frappe.get_doc({
-        "doctype": "Dock Bookmark",
-        "user": user,
-        "app": app,
-        "doctype": doctype,
-        "docname": docname,
-        "label": label,
-        "icon": icon or "",
-        "sort_order": count,
-    })
+    # Use frappe.new_doc + db.set_value to work around the 'doctype' fieldname conflict:
+    # a dict literal with two "doctype" keys passes the bookmarked doctype as the meta
+    # type, causing frappe.get_doc to create the wrong document type entirely.
+    doc = frappe.new_doc("Dock Bookmark")
+    doc.user = user
+    doc.app = app
+    doc.docname = docname
+    doc.label = label
+    doc.icon = icon or ""
+    doc.sort_order = count
     doc.insert(ignore_permissions=True)
+    frappe.db.set_value("Dock Bookmark", doc.name, "doctype", doctype, update_modified=False)
     return doc.name
 
 

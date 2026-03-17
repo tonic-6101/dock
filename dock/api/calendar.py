@@ -85,7 +85,7 @@ def delete_event(name: str) -> dict:
 
 
 @frappe.whitelist()
-def get_sources() -> list:
+def get_calendar_sources() -> list:
     """
     Returns apps that declare dock_calendar_sources, merged with dock_app_registry
     color and label for sidebar rendering.

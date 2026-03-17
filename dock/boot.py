@@ -3,6 +3,7 @@
 
 import frappe
 from dock import __version__
+from dock.api.settings import _get_merged_settings
 
 
 def extend_bootinfo(bootinfo):
@@ -11,26 +12,13 @@ def extend_bootinfo(bootinfo):
         # Guard: not fully installed yet (e.g. mid-migration)
         return
 
-    settings = frappe.get_cached_doc("Dock Settings")
+    merged = _get_merged_settings(frappe.session.user)
     frappe_time_installed = "frappe_time" in frappe.get_installed_apps()
 
     bootinfo.dock = {
         "installed": True,
         "version": __version__,
-        "settings": {
-            "theme": settings.get("theme") or "system",
-            "timezone": settings.get("timezone") or "",
-            "week_start": settings.get("week_start") or "Monday",
-            "date_format": settings.get("date_format") or "dd/mm/yyyy",
-            "enable_global_timer": bool(settings.get("enable_global_timer")),
-            "enable_bookmarks": bool(settings.get("enable_bookmarks")),
-            "enable_recent_items": bool(settings.get("enable_recent_items")),
-            "recent_items_limit": settings.get("recent_items_limit") or 20,
-            "site_label": settings.get("site_label") or "",
-            "notification_retention_days": settings.get("notification_retention_days") or 90,
-            "guest_session_default_expiry_days": settings.get("guest_session_default_expiry_days") or 30,
-            # frappe_manager_url intentionally excluded — server-only, permlevel 1
-        },
+        "settings": merged,
         "registered_apps": _get_registered_apps(),
         # calendar_sources — seeded at boot to drive sidebar toggles + create picker
         "calendar_sources": _get_calendar_sources(),
@@ -45,9 +33,16 @@ def extend_bootinfo(bootinfo):
         "frappe_time_installed": frappe_time_installed,
         "timer_state": _get_timer_state() if frappe_time_installed else None,
         # Recent items + bookmarks — seeded at boot to avoid extra API calls on mount
-        "recent_items": _get_recent_items(settings),
-        "bookmarks": _get_bookmarks(),
+        "recent_items": _get_recent_items(merged),
+        "bookmarks": _get_bookmarks(merged),
+        # Search sections per app — drives second-level scope tabs in the search modal
+        "search_sections": _get_search_sections(),
+        # Guest views — collected from dock_guest_views hooks; used by Guest Portal shell
+        "guest_views": _get_guest_views(),
     }
+
+
+_REQUIRED_APP_REGISTRY_FIELDS = {"label", "icon", "color", "route"}
 
 
 def _get_registered_apps():
@@ -60,6 +55,13 @@ def _get_registered_apps():
         entry = registry if isinstance(registry, dict) else registry[0]
         # Frappe normalizes hook values to lists — unwrap single-item lists
         unwrapped = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in entry.items()}
+        missing = _REQUIRED_APP_REGISTRY_FIELDS - set(unwrapped.keys())
+        if missing:
+            frappe.log_error(
+                f"dock: {app} dock_app_registry missing required fields: {missing}",
+                "Dock Hook Validation",
+            )
+            continue
         registered.append({"app": app, **unwrapped})
     return registered
 
@@ -70,16 +72,24 @@ def _get_calendar_sources():
     sources = []
     for app in frappe.get_installed_apps():
         decl = frappe.get_hooks("dock_calendar_sources", app_name=app)
-        if decl:
-            reg = registered.get(app, {})
-            sources.append({
-                "app": app,
-                "label": reg.get("label", app),
-                "color": reg.get("color", "#6b7280"),
-                "event_label": decl[0].get("event_label", "Event"),
-                "create_route_template": decl[0].get("create_route_template"),
-            })
+        if not decl:
+            continue
+        # get_hooks may return a dict or a list — normalize
+        entry = decl if isinstance(decl, dict) else decl[0]
+        # Unwrap single-item list values (Frappe normalizes hook values to lists)
+        entry = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in entry.items()}
+        reg = registered.get(app, {})
+        sources.append({
+            "app": app,
+            "label": reg.get("label", app),
+            "color": reg.get("color", "#6b7280"),
+            "event_label": entry.get("event_label", "Event"),
+            "create_route_template": entry.get("create_route_template"),
+        })
     return sources
+
+
+_REQUIRED_NOTIFICATION_TYPE_FIELDS = {"type", "label", "icon"}
 
 
 def _get_notification_types():
@@ -89,9 +99,26 @@ def _get_notification_types():
         for t in frappe.get_hooks("dock_notification_types", app_name=app):
             items = t if isinstance(t, list) else [t]
             for item in items:
-                types[item["type"]] = {
+                if not isinstance(item, dict):
+                    continue
+                missing = _REQUIRED_NOTIFICATION_TYPE_FIELDS - set(item.keys())
+                if missing:
+                    frappe.log_error(
+                        f"dock: {app} dock_notification_types entry missing fields: {missing}",
+                        "Dock Hook Validation",
+                    )
+                    continue
+                key = item["type"]
+                if key in types:
+                    frappe.log_error(
+                        f"dock: duplicate notification type '{key}' declared by '{app}' "
+                        f"(already registered by '{types[key]['app']}'). First declaration wins.",
+                        "Dock Hook Validation",
+                    )
+                    continue
+                types[key] = {
                     "label": item["label"],
-                    "icon": item.get("icon", "bell"),
+                    "icon": item["icon"],
                     "app": app,
                 }
     return types
@@ -109,7 +136,9 @@ def _get_recent_items(settings):
     )
 
 
-def _get_bookmarks():
+def _get_bookmarks(settings):
+    if not settings.get("enable_bookmarks"):
+        return []
     return frappe.get_all(
         "Dock Bookmark",
         filters={"user": frappe.session.user},
@@ -125,3 +154,50 @@ def _get_timer_state():
         return get_state()
     except Exception:
         return {"state": "unavailable"}
+
+
+def _get_guest_views():
+    """
+    Collects dock_guest_views from all installed apps.
+    Shape: [{ "view_id": "orga.project_status", "label": "...", "route": "...", "app": "orga" }, ...]
+    Used by the Guest Portal shell to resolve the iframe URL for a session's view_id.
+    """
+    views = []
+    for app in frappe.get_installed_apps():
+        hook_views = frappe.get_hooks("dock_guest_views", app_name=app)
+        for view_list in hook_views:
+            items = view_list if isinstance(view_list, list) else [view_list]
+            for v in items:
+                views.append({
+                    "view_id": v.get("view_id"),
+                    "label": v.get("label"),
+                    "route": v.get("route"),
+                    "app": app,
+                })
+    return views
+
+
+def _get_search_sections():
+    """
+    Returns a dict of app → list of section labels/doctypes.
+    Used by the frontend search modal to render second-level section tabs.
+    Shape: { "orga": [{ "label": "Projects", "doctype": "Orga Project" }, ...], ... }
+    """
+    result = {}
+    for app in frappe.get_installed_apps():
+        if app == "frappe":
+            continue
+        hook_sections = frappe.get_hooks("dock_search_sections", app_name=app)
+        if not hook_sections:
+            continue
+        sections = []
+        for section_list in hook_sections:
+            items = section_list if isinstance(section_list, list) else [section_list]
+            for s in items:
+                sections.append({
+                    "label": s.get("label"),
+                    "doctype": s.get("doctype"),
+                })
+        if sections:
+            result[app] = sections
+    return result

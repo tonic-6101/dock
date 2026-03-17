@@ -66,6 +66,6 @@ function routeFor(item: { app: string; doctype: string; docname: string }): stri
     </div>
   </div>
   <div v-else class="px-4 py-3 text-xs text-[var(--dock-icon)]">
-    {{ __('No recent items') }}
+    {{ __('No recent items yet') }}
   </div>
 </template>

@@ -8,22 +8,27 @@ export default { name: 'DockAppSwitcher' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Grid3x3 } from 'lucide-vue-next'
+import { Grip, Users } from 'lucide-vue-next'
 import { useDockBoot } from '@/composables/useDockBoot'
+import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 import { __ } from '@/composables/useTranslate'
 import DockBookmarks from './DockBookmarks.vue'
 
 const { registeredApps } = useDockBoot()
 
-const open = ref(false)
+const triggerRef = ref<HTMLButtonElement | null>(null)
 const rootRef = ref<HTMLElement | null>(null)
+const gridRef = ref<HTMLElement | null>(null)
 const currentPath = ref(window.location.pathname)
+
+const { open, toggle, close } = useDropdownExclusion('switcher', triggerRef)
 
 type App = { app: string; label: string; icon?: string; color: string; route: string }
 
-const isSystemManager = computed(() =>
-  !!((window as any).frappe?.user_roles?.includes('System Manager'))
-)
+const isSystemManager = computed(() => {
+  const deskRoles = ((window as any).frappe?.boot?.user?.roles ?? []) as string[]
+  return deskRoles.includes('System Manager')
+})
 
 const ctaLabel = computed(() =>
   isSystemManager.value ? __('Install apps →') : __('Browse all apps →')
@@ -41,8 +46,7 @@ function isActive(app: App): boolean {
   return currentPath.value.startsWith(app.route)
 }
 
-function close() { open.value = false }
-function toggle() { open.value = !open.value }
+function navigateToPeople() { close(); window.location.href = '/dock/people' }
 
 function navigateTo(app: App) {
   document.documentElement.style.setProperty('--dock-accent', app.color)
@@ -58,6 +62,28 @@ function onClickOutside(e: MouseEvent) {
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && open.value) close()
+}
+
+// WAI-ARIA grid: 2D arrow key navigation
+function onGridKeydown(e: KeyboardEvent) {
+  if (!gridRef.value) return
+  const cells = Array.from(gridRef.value.querySelectorAll<HTMLElement>('[role="gridcell"]'))
+  const idx = cells.indexOf(e.target as HTMLElement)
+  if (idx === -1) return
+
+  const cols = 3
+  let next = -1
+  switch (e.key) {
+    case 'ArrowRight': next = idx + 1 < cells.length ? idx + 1 : idx; break
+    case 'ArrowLeft':  next = idx - 1 >= 0 ? idx - 1 : idx; break
+    case 'ArrowDown':  next = idx + cols < cells.length ? idx + cols : idx; break
+    case 'ArrowUp':    next = idx - cols >= 0 ? idx - cols : idx; break
+    case 'Home':       next = 0; break
+    case 'End':        next = cells.length - 1; break
+    default: return
+  }
+  e.preventDefault()
+  cells[next]?.focus()
 }
 
 function onPopstate() {
@@ -81,15 +107,16 @@ onUnmounted(() => {
   <div ref="rootRef" class="dock-app-switcher relative">
     <!-- Trigger button -->
     <button
+      ref="triggerRef"
       class="flex items-center justify-center w-8 h-8 rounded-md
              text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
       :aria-expanded="open"
       aria-haspopup="true"
-      aria-label="Open app switcher"
+      :aria-label="__('Open app switcher')"
       :title="__('App switcher')"
       @click="toggle"
     >
-      <Grid3x3 class="w-4 h-4" />
+      <Grip class="w-4 h-4" />
     </button>
 
     <!-- Mobile backdrop -->
@@ -125,54 +152,79 @@ onUnmounted(() => {
         <!-- Pinned bookmarks (hidden when empty) -->
         <DockBookmarks @close="close" />
 
-        <!-- App grid -->
-        <template v-if="(registeredApps as App[]).length > 0">
-          <div
-            role="grid"
-            aria-label="Installed apps"
-            class="grid grid-cols-3 gap-2 mb-3"
+        <!-- App grid: hardcoded Dock-native entries + registered domain apps -->
+        <div
+          ref="gridRef"
+          role="grid"
+          aria-label="Apps"
+          class="grid grid-cols-3 gap-2 mb-3"
+          @keydown="onGridKeydown"
+        >
+          <!-- Hardcoded: People (Dock-native, always visible) -->
+          <div role="row" class="contents">
+          <a
+            href="/dock/people"
+            role="gridcell"
+            tabindex="0"
+            :aria-label="__('People')"
+            :aria-current="currentPath.startsWith('/dock/people') ? 'true' : undefined"
+            class="flex flex-col items-center gap-1.5 p-2 rounded-lg text-center
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dock-accent)] focus-visible:ring-offset-1"
+            :class="{ 'ring-2 ring-[var(--dock-accent)]': currentPath.startsWith('/dock/people') }"
+            @click.prevent="navigateToPeople"
           >
-            <template v-for="(row, ri) in appRows" :key="ri">
-              <div role="row" class="contents">
-                <a
-                  v-for="app in row"
-                  :key="app.app"
-                  :href="app.route"
-                  role="gridcell"
-                  :aria-label="app.label"
-                  :aria-current="isActive(app) ? 'true' : undefined"
-                  class="flex flex-col items-center gap-1.5 p-2 rounded-lg text-center
-                         hover:bg-black/5 dark:hover:bg-white/10 transition-colors
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dock-accent)] focus-visible:ring-offset-1"
-                  :class="{ 'ring-2 ring-[var(--dock-accent)]': isActive(app) }"
-                  @click.prevent="navigateTo(app)"
-                >
-                  <!-- App icon: image asset if provided, else color + initial avatar -->
-                  <span
-                    class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
-                    :class="!app.icon ? 'text-white text-xl font-bold' : ''"
-                    :style="!app.icon ? { backgroundColor: app.color } : {}"
-                  >
-                    <img
-                      v-if="app.icon"
-                      :src="app.icon"
-                      :alt="app.label"
-                      class="w-full h-full object-contain"
-                    />
-                    <template v-else>{{ app.label[0] }}</template>
-                  </span>
-                  <span class="text-xs text-[var(--dock-text)] truncate w-full leading-tight">
-                    {{ app.label }}
-                  </span>
-                </a>
-              </div>
-            </template>
+            <span class="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/10 flex-shrink-0">
+              <Users class="w-6 h-6 text-indigo-500" />
+            </span>
+            <span class="text-xs text-[var(--dock-text)] truncate w-full leading-tight">
+              {{ __('People') }}
+            </span>
+          </a>
           </div>
-        </template>
 
-        <!-- Empty state -->
-        <div v-else class="flex flex-col items-center gap-3 py-8 text-center">
-          <Grid3x3 class="w-8 h-8 text-[var(--dock-icon)] opacity-40" />
+          <!-- Dynamic: registered domain apps -->
+          <template v-for="(row, ri) in appRows" :key="ri">
+            <div role="row" class="contents">
+              <a
+                v-for="app in row"
+                :key="app.app"
+                :href="app.route"
+                role="gridcell"
+                tabindex="0"
+                :aria-label="app.label"
+                :aria-current="isActive(app) ? 'true' : undefined"
+                class="flex flex-col items-center gap-1.5 p-2 rounded-lg text-center
+                       hover:bg-black/5 dark:hover:bg-white/10 transition-colors
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dock-accent)] focus-visible:ring-offset-1"
+                :class="{ 'ring-2 ring-[var(--dock-accent)]': isActive(app) }"
+                @click.prevent="navigateTo(app)"
+              >
+                <span
+                  class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
+                  :class="!app.icon ? 'text-white text-xl font-bold' : ''"
+                  :style="!app.icon ? { backgroundColor: app.color } : {}"
+                >
+                  <img
+                    v-if="app.icon"
+                    :src="app.icon"
+                    :alt="app.label"
+                    class="w-full h-full object-contain"
+                  />
+                  <template v-else>{{ app.label[0] }}</template>
+                </span>
+                <span class="text-xs text-[var(--dock-text)] truncate w-full leading-tight">
+                  {{ app.label }}
+                </span>
+              </a>
+            </div>
+          </template>
+
+          <!-- Empty slot filler when no domain apps (show discover hint below grid) -->
+        </div>
+
+        <div v-if="(registeredApps as App[]).length === 0" class="flex flex-col items-center gap-3 py-8 text-center">
+          <Grip class="w-8 h-8 text-[var(--dock-icon)] opacity-40" />
           <p class="text-sm text-[var(--dock-icon)]">{{ __('Discover ecosystem apps') }}</p>
         </div>
 

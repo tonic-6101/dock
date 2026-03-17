@@ -17,6 +17,7 @@ import { Bookmark, BookmarkCheck } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useBookmarks } from '@/composables/useBookmarks'
 import { useRecentItems } from '@/composables/useRecentItems'
+import { useDockBoot } from '@/composables/useDockBoot'
 
 interface ParsedRoute {
   app: string
@@ -26,6 +27,7 @@ interface ParsedRoute {
 
 const props = defineProps<{ currentPath: string }>()
 
+const { settings } = useDockBoot()
 const { atLimit, isBookmarked, addBookmark, removeBookmark } = useBookmarks()
 const { items: recentItems } = useRecentItems()
 
@@ -38,7 +40,7 @@ const parsed = computed<ParsedRoute | null>(() => {
   return { app, doctype, docname: decodeURIComponent(docname) }
 })
 
-const visible = computed(() => parsed.value !== null)
+const visible = computed(() => parsed.value !== null && settings.value?.enable_bookmarks !== false)
 
 const bookmarkName = computed(() => {
   if (!parsed.value) return null

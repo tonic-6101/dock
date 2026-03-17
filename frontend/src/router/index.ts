@@ -23,6 +23,10 @@ const router = createRouter({
       component: () => import('@/pages/DockPersonPage.vue'),
     },
     {
+      path: '/apps',
+      component: () => import('@/pages/DockEcosystemAppsPage.vue'),
+    },
+    {
       path: '/calendar',
       component: () => import('@/pages/DockCalendarPage.vue'),
     },

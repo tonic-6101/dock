@@ -22,17 +22,23 @@ const timerState = boot?.timer_state
 const dismissed = ref(false)
 const visible = ref(false)
 
+function actualElapsedSeconds(): number {
+  if (!timerState) return 0
+  const base = timerState.elapsed_seconds ?? 0
+  if (timerState.state === 'running' && timerState.started_at) {
+    return base + Math.floor((Date.now() - new Date(timerState.started_at).getTime()) / 1000)
+  }
+  return base
+}
+
 onMounted(() => {
-  if (
-    timerState?.state === 'running' &&
-    timerState?.elapsed_seconds > STALE_THRESHOLD_SECONDS
-  ) {
+  if (timerState?.state === 'running' && actualElapsedSeconds() > STALE_THRESHOLD_SECONDS) {
     visible.value = true
   }
 })
 
 const elapsed = computed(() => {
-  const s = timerState?.elapsed_seconds ?? 0
+  const s = actualElapsedSeconds()
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`

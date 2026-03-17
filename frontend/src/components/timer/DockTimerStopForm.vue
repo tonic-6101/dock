@@ -17,10 +17,11 @@ const notes = ref('')
 </script>
 
 <template>
-  <!-- Post-stop confirmation -->
-  <div v-if="entryName !== undefined && entryName !== null" class="p-3 space-y-2">
+  <!-- Post-stop confirmation (shown as soon as entryName is no longer undefined) -->
+  <div v-if="entryName !== undefined" class="p-3 space-y-2">
     <p class="text-sm text-green-600 dark:text-green-400 font-medium">✓ {{ __('Time entry saved') }}</p>
     <a
+      v-if="entryName"
       :href="`/app/ft-time-entry/${entryName}`"
       class="text-xs text-[var(--dock-accent)] hover:underline"
     >{{ __('View time entry') }} →</a>

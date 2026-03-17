@@ -10,20 +10,31 @@ export default { name: 'DockSettingsPersonal' }
 import { ref, watch } from 'vue'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
+import { useRecentItems } from '@/composables/useRecentItems'
 import type { DockSettings } from '@/composables/useDockSettings'
 
 const props = defineProps<{ settings: DockSettings }>()
 
-const theme     = ref(props.settings.theme)
-const timezone  = ref(props.settings.timezone)
-const weekStart = ref(props.settings.week_start)
-const dateFormat = ref(props.settings.date_format)
-const language  = ref(props.settings.ui_language)
+const theme      = ref(props.settings.theme)
+const timezone   = ref(props.settings.timezone)
+const weekStart  = ref(props.settings.weekStart)
+const dateFormat = ref(props.settings.dateFormat)
+const language   = ref(props.settings.uiLanguage)
 
 const saving = ref(false)
 const saved  = ref(false)
 
 const user = (window as any).dockBoot?.session?.user ?? window.frappe?.session?.user ?? ''
+
+const { clearAll: clearRecentItems } = useRecentItems()
+const historyCleared = ref(false)
+
+async function confirmClearHistory() {
+  if (!window.confirm(__('This will remove all recent items. Continue?'))) return
+  clearRecentItems()
+  historyCleared.value = true
+  setTimeout(() => (historyCleared.value = false), 2500)
+}
 
 const themes = [
   { value: 'light',  label: __('Light') },
@@ -124,6 +135,18 @@ watch(language,   val => savePreference('ui_language', val))
       </select>
     </div>
 
+    <!-- Language -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Language') }}</label>
+      <input
+        v-model="language"
+        type="text"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+        :placeholder="__('e.g. en, fr, de')"
+      />
+      <p class="mt-1 text-xs text-gray-400">{{ __('Blank = org default') }}: {{ settings.uiLanguage }}</p>
+    </div>
+
     <!-- My Account -->
     <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
       <a
@@ -133,6 +156,17 @@ watch(language,   val => savePreference('ui_language', val))
         {{ __('My Account') }} →
       </a>
       <p class="mt-0.5 text-xs text-gray-400">{{ __('Password, 2FA, profile picture') }}</p>
+    </div>
+
+    <!-- Recent items privacy -->
+    <div v-if="settings.enableRecentItems" class="pt-2 border-t border-gray-100 dark:border-gray-700">
+      <button
+        class="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors underline underline-offset-2"
+        @click="confirmClearHistory"
+      >{{ __('Clear recent items history') }}</button>
+      <p v-if="historyCleared" class="mt-1 text-xs text-green-600 dark:text-green-400">
+        {{ __('History cleared') }}
+      </p>
     </div>
 
     <!-- Save feedback -->

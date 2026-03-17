@@ -3,128 +3,131 @@
 
 import frappe
 
+# Frappe core sections — always searched last, regardless of installed apps.
+# Domain apps declare their own sections via dock_search_sections in hooks.py.
+# NOTE: Contact is intentionally omitted here — Dock registers it via
+# dock_search_sections with the dock_shared visibility filter applied,
+# so contacts appear under "People" with correct privacy enforcement.
+BUILT_IN_SECTIONS = [
+    {
+        "label": "Files",
+        "app": "frappe",
+        "doctype": "File",
+        "search_fields": ["file_name"],
+        "display_field": "file_name",
+        "route_template": "/app/file/{name}",
+    },
+]
+
 
 @frappe.whitelist()
 def global_search(
     query: str,
     app: str = None,
     section: str = None,
-    limit: int = 20,
+    per_section: int = 5,
 ) -> list:
     """
-    Search across all registered dock_search_sections from installed apps.
-    Respects Frappe permissions — only returns records the current user can read.
-    Returns list of { label, route, app, section, doctype, name }.
+    Search across all registered dock_search_sections and Frappe core sections.
 
-    Optional filters:
-      app     — restrict to a single app name
-      section — restrict to a section label within that app
+    - query:       search string (min 2 chars enforced)
+    - app:         filter to a specific app key (None = all apps)
+    - section:     filter to a specific section label (None = all sections)
+    - per_section: max results per section (default 5)
+
+    Sort order: domain apps (alphabetical) → Frappe core built-ins last.
+    Guest sessions always return [].
+    Permissions applied automatically via frappe.db.get_list().
+    Sections may declare visibility_fn + extra_fields for post-fetch filtering.
     """
+    if frappe.session.user == "Guest":
+        return []
+
     if not query or len(query.strip()) < 2:
         return []
 
     query = query.strip()
+    per_section = max(1, int(per_section))
     results = []
 
-    for installed_app in frappe.get_installed_apps():
+    # 1. Domain app sections — alphabetical by app name, built-ins excluded
+    for installed_app in sorted(frappe.get_installed_apps()):
+        if installed_app == "frappe":
+            continue
         if app and installed_app != app:
             continue
 
-        sections = frappe.get_hooks("dock_search_sections", app_name=installed_app)
-        for section_list in sections:
+        hook_sections = frappe.get_hooks("dock_search_sections", app_name=installed_app)
+        for section_list in hook_sections:
             items = section_list if isinstance(section_list, list) else [section_list]
             for s in items:
                 if section and s.get("label") != section:
                     continue
-                results.extend(_search_section(installed_app, s, query, limit))
+                results.extend(_search_section(installed_app, s, query, per_section))
 
-    # Also search Frappe Contact for People Hub
-    results.extend(_search_people(query, limit))
+    # 2. Frappe core built-in sections — always last
+    if not app or app == "frappe":
+        for s in BUILT_IN_SECTIONS:
+            if section and s.get("label") != section:
+                continue
+            results.extend(_search_section("frappe", s, query, per_section))
 
-    results.sort(key=lambda r: r.get("_score", 0), reverse=True)
-    return [
-        {k: v for k, v in r.items() if k != "_score"}
-        for r in results[:int(limit)]
-    ]
+    return results
 
 
-def _search_section(app_name: str, section: dict, query: str, limit: int) -> list:
+def _search_section(app_name: str, section: dict, query: str, per_section: int) -> list:
+    """Execute a search against one section using frappe.db.get_list() for automatic permissions.
+
+    Sections may declare:
+      extra_fields:  list of additional field names to fetch (used by visibility_fn, stripped from output)
+      visibility_fn: dotted path to a function(rows: list[dict]) -> list[dict] for post-fetch filtering
+    """
     doctype = section.get("doctype")
-    search_fields = section.get("search_fields", ["name"])
-    display_field = section.get("display_field", "name")
-    route_template = section.get("route_template", "")
-    extra_filters = section.get("filters", {})
+    search_fields = section.get("search_fields") or ["name"]
+    display_field = section.get("display_field") or "name"
+    route_template = section.get("route_template") or ""
+    extra_fields = section.get("extra_fields") or []
+    visibility_fn = section.get("visibility_fn")
 
     if not doctype or not frappe.db.exists("DocType", doctype):
         return []
 
-    or_filters = [[doctype, f, "like", f"%{query}%"] for f in search_fields]
+    q = f"%{query}%"
+    or_filters = [[f, "like", q] for f in search_fields]
+    fields = list({display_field, "name"} | set(extra_fields))
 
     try:
-        rows = frappe.get_all(
+        rows = frappe.db.get_list(
             doctype,
             or_filters=or_filters,
-            filters=extra_filters,
-            fields=["name", display_field],
-            limit=limit,
+            fields=fields,
+            limit=per_section,
         )
     except Exception:
         frappe.log_error(f"dock search failed for {doctype}")
         return []
 
-    results = []
+    # Apply section-level visibility filter (e.g. dock_shared for People)
+    if visibility_fn:
+        try:
+            rows = frappe.get_attr(visibility_fn)(rows)
+        except Exception:
+            frappe.log_error(f"dock search visibility_fn failed: {visibility_fn}")
+
     q_lower = query.lower()
+    results = []
     for row in rows:
         label = row.get(display_field) or row["name"]
         route = route_template.replace("{name}", row["name"])
-        # Prefix match scores higher than substring match
-        score = 2 if label.lower().startswith(q_lower) else 1
         results.append({
             "label": label,
             "route": route,
             "app": app_name,
-            "section": section.get("label", doctype),
+            "section": section.get("label") or doctype,
             "doctype": doctype,
             "name": row["name"],
-            "_score": score,
+            "_score": 2 if str(label).lower().startswith(q_lower) else 1,
         })
-    return results
 
-
-def _search_people(query: str, limit: int) -> list:
-    """Search Frappe Contact for the People Hub section."""
-    if not frappe.db.exists("DocType", "Contact"):
-        return []
-
-    from dock.api.people import get_people_permission_condition
-
-    try:
-        rows = frappe.get_all(
-            "Contact",
-            or_filters=[
-                ["Contact", "full_name", "like", f"%{query}%"],
-                ["Contact", "email_id", "like", f"%{query}%"],
-            ],
-            filters=frappe.safe_eval(
-                f"[{get_people_permission_condition()}]"
-            ) if False else {},  # permission applied via query condition
-            fields=["name", "full_name", "email_id"],
-            limit=limit,
-        )
-    except Exception:
-        frappe.log_error("dock people search failed")
-        return []
-
-    q_lower = query.lower()
-    return [
-        {
-            "label": row.get("full_name") or row["name"],
-            "route": f"/dock/people/{row['name']}",
-            "app": "dock",
-            "section": "People",
-            "doctype": "Contact",
-            "name": row["name"],
-            "_score": 2 if (row.get("full_name") or row["name"]).lower().startswith(q_lower) else 1,
-        }
-        for row in rows
-    ]
+    results.sort(key=lambda r: r["_score"], reverse=True)
+    return [{k: v for k, v in r.items() if k != "_score"} for r in results]

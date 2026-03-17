@@ -17,8 +17,23 @@ def publish(
 ) -> str:
     """
     Create a Dock Notification and push a realtime event to the recipient.
+    Validates notification_type against the dock_notification_types hook for from_app.
     Returns the created notification name.
     """
+    # Validate notification_type against the app's declared types
+    registered = frappe.get_hooks("dock_notification_types", app_name=from_app)
+    valid_types = []
+    for entry in registered:
+        items = entry if isinstance(entry, list) else [entry]
+        for item in items:
+            if isinstance(item, dict) and item.get("type"):
+                valid_types.append(item["type"])
+    if valid_types and notification_type not in valid_types:
+        frappe.throw(
+            frappe._(f"Unknown notification_type '{notification_type}' for app '{from_app}'"),
+            frappe.ValidationError,
+        )
+
     doc = frappe.get_doc({
         "doctype": "Dock Notification",
         "for_user": for_user,
@@ -42,6 +57,7 @@ def publish(
             "title": title,
             "message": message,
             "action_url": action_url,
+            "creation": str(doc.creation),
         },
         user=for_user,
     )

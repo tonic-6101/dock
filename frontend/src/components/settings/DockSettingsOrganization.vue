@@ -15,16 +15,18 @@ import type { DockSettings } from '@/composables/useDockSettings'
 const props = defineProps<{ settings: DockSettings }>()
 const emit  = defineEmits<{ saved: [] }>()
 
-const siteLabel    = ref(props.settings.site_label)
-const defaultApp   = ref(props.settings.default_app)
+const siteLabel    = ref(props.settings.siteLabel)
+const defaultApp   = ref(props.settings.defaultApp)
 const timezone     = ref(props.settings.timezone)
-const weekStart    = ref(props.settings.week_start)
-const dateFormat   = ref(props.settings.date_format)
-const language     = ref(props.settings.ui_language)
-const timerEnabled = ref(props.settings.enable_global_timer)
-const bookmarks    = ref(props.settings.enable_bookmarks)
-const recentItems  = ref(props.settings.enable_recent_items)
-const recentLimit  = ref(props.settings.recent_items_limit)
+const weekStart    = ref(props.settings.weekStart)
+const dateFormat   = ref(props.settings.dateFormat)
+const language     = ref(props.settings.uiLanguage)
+const currency     = ref(props.settings.currency)
+const numberFormat = ref(props.settings.numberFormat)
+const timerEnabled = ref(props.settings.enableGlobalTimer)
+const bookmarks    = ref(props.settings.enableBookmarks)
+const recentItems  = ref(props.settings.enableRecentItems)
+const recentLimit  = ref(props.settings.recentItemsLimit)
 
 const saving = ref(false)
 const saved  = ref(false)
@@ -54,6 +56,8 @@ async function save() {
         week_start:          weekStart.value,
         date_format:         dateFormat.value,
         ui_language:         language.value,
+        currency:            currency.value,
+        number_format:       numberFormat.value,
         enable_global_timer: timerEnabled.value ? 1 : 0,
         enable_bookmarks:    bookmarks.value ? 1 : 0,
         enable_recent_items: recentItems.value ? 1 : 0,
@@ -128,6 +132,39 @@ async function save() {
       >
         <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </select>
+    </div>
+
+    <!-- Language -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Language') }}</label>
+      <input
+        v-model="language"
+        type="text"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        placeholder="en"
+      />
+    </div>
+
+    <!-- Currency -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Currency') }}</label>
+      <input
+        v-model="currency"
+        type="text"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        placeholder="EUR"
+      />
+    </div>
+
+    <!-- Number format -->
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Number format') }}</label>
+      <input
+        v-model="numberFormat"
+        type="text"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        placeholder="#.###,##"
+      />
     </div>
 
     <!-- Feature toggles -->

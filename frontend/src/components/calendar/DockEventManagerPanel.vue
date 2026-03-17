@@ -8,6 +8,10 @@ export default { name: 'DockEventManagerPanel' }
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import {
+  CalendarDays, FileText, Zap, ExternalLink,
+  Loader2, Trash2, X, Info,
+} from 'lucide-vue-next'
 import { callApi } from '@/composables/useApi'
 import { __ } from '@/composables/useTranslate'
 import type { DockEvent } from '@/types/dock'
@@ -18,7 +22,6 @@ interface Props {
 
 interface Tab {
   id: string
-  icon: string
   label: string
 }
 
@@ -30,8 +33,8 @@ const emit = defineEmits<{
 }>()
 
 const TABS: Tab[] = [
-  { id: 'details', icon: 'fa-file-alt',  label: __('Details') },
-  { id: 'actions', icon: 'fa-bolt',       label: __('Actions') },
+  { id: 'details', label: __('Details') },
+  { id: 'actions', label: __('Actions') },
 ]
 
 const STORAGE_KEY = 'manager_tab_dock-event'
@@ -104,52 +107,48 @@ async function handleDelete() {
   <!-- Mobile backdrop -->
   <div
     class="fixed inset-0 bg-black/50 z-30 lg:hidden"
-    aria-label="Close panel"
+    :aria-label="__('Close panel')"
     @click="emit('close')"
   />
 
   <aside
     class="fixed inset-y-0 right-0 w-full max-w-sm z-50
            lg:relative lg:z-auto lg:w-80 lg:max-w-none lg:inset-y-auto lg:right-auto
-           bg-white dark:bg-gray-900
-           border-l border-gray-200 dark:border-gray-700
-           flex flex-col flex-shrink-0 overflow-hidden
-           transition-all"
-    role="complementary"
+           bg-[var(--dock-bg)] border-l border-[var(--dock-border)]
+           flex flex-col flex-shrink-0 overflow-hidden transition-all"
+    role="dialog"
     :aria-label="event.title"
   >
 
     <!-- ── Zone 1: Header ────────────────────────────────────────────────── -->
-    <div class="p-4 border-b border-gray-200 dark:border-gray-700
+    <div class="p-4 border-b border-[var(--dock-border)]
                 flex items-center justify-between shrink-0">
-      <h3 class="font-semibold text-gray-800 dark:text-gray-100 m-0
+      <h3 class="font-semibold text-[var(--dock-text)] m-0
                  flex items-center gap-2 min-w-0">
-        <i class="fa-solid fa-calendar-day shrink-0" style="color: var(--dock-icon)" />
+        <CalendarDays class="w-4 h-4 shrink-0 text-[var(--dock-icon)]" />
         <span class="truncate">{{ event.title }}</span>
-        <span class="text-xs font-normal text-gray-400 dark:text-gray-500 shrink-0">
+        <span class="text-xs font-normal text-[var(--dock-icon)] shrink-0">
           {{ sourceLabel }}
         </span>
       </h3>
       <button
-        class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
-               rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        class="p-1.5 text-[var(--dock-icon)] hover:text-[var(--dock-text)]
+               rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
         :title="__('Close')"
         :aria-label="__('Close')"
         @click="emit('close')"
       >
-        <i class="fa-solid fa-xmark" />
+        <X class="w-4 h-4" />
       </button>
     </div>
 
     <!-- ── Zone 2: Tab Bar ───────────────────────────────────────────────── -->
-    <div class="manager-tabs border-b border-gray-200 dark:border-gray-700 shrink-0">
-      <!-- Section label -->
+    <div class="border-b border-[var(--dock-border)] shrink-0">
       <div class="px-4 pt-2 pb-1">
-        <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <span class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
           {{ __('Event') }}
         </span>
       </div>
-      <!-- Tabs -->
       <div class="flex px-4" role="tablist">
         <button
           v-for="tab in TABS"
@@ -157,34 +156,26 @@ async function handleDelete() {
           role="tab"
           :aria-selected="activeTab === tab.id"
           :title="tab.label"
-          class="flex-1 flex items-center justify-center py-2 relative group transition-colors"
+          class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium relative group transition-colors"
           :class="activeTab === tab.id
             ? 'text-[var(--dock-icon)]'
-            : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'"
+            : 'text-[var(--dock-icon)] opacity-50 hover:opacity-80'"
           @click="selectTab(tab.id)"
         >
-          <i :class="['fa-solid', tab.icon, 'text-base']" />
+          <FileText v-if="tab.id === 'details'" class="w-3.5 h-3.5" />
+          <Zap v-else class="w-3.5 h-3.5" />
+          {{ tab.label }}
           <!-- Active underline -->
           <div
             v-if="activeTab === tab.id"
-            class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full"
-            style="background-color: var(--dock-icon)"
+            class="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--dock-icon)]"
           />
-          <!-- Tooltip -->
-          <div class="absolute -bottom-8 left-1/2 -translate-x-1/2
-                      px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap
-                      opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-            {{ tab.label }}
-          </div>
         </button>
       </div>
     </div>
 
     <!-- ── Zone 3: Tab Content ───────────────────────────────────────────── -->
-    <div
-      class="flex-1 overflow-auto bg-white dark:bg-gray-900 transition-colors"
-      role="tabpanel"
-    >
+    <div class="flex-1 overflow-auto" role="tabpanel">
       <div class="p-4">
 
         <!-- Details tab ───────────────────────────────────────────────── -->
@@ -192,37 +183,37 @@ async function handleDelete() {
 
           <!-- Title -->
           <div>
-            <label class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
               {{ __('Title') }}
             </label>
-            <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">{{ event.title }}</p>
+            <p class="mt-1 text-sm text-[var(--dock-text)]">{{ event.title }}</p>
           </div>
 
           <!-- Type -->
           <div>
-            <label class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
               {{ __('Type') }}
             </label>
-            <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">{{ eventTypeLabel }}</p>
+            <p class="mt-1 text-sm text-[var(--dock-text)]">{{ eventTypeLabel }}</p>
           </div>
 
           <!-- Date & Time -->
           <div>
-            <label class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
               {{ __('When') }}
             </label>
             <template v-if="event.all_day">
-              <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">
+              <p class="mt-1 text-sm text-[var(--dock-text)]">
                 {{ fmtDate(event.start_datetime) }}
                 <span v-if="event.end_datetime"> → {{ fmtDate(event.end_datetime) }}</span>
-                <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">({{ __('All day') }})</span>
+                <span class="ml-2 text-xs text-[var(--dock-icon)]">({{ __('All day') }})</span>
               </p>
             </template>
             <template v-else>
-              <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">
+              <p class="mt-1 text-sm text-[var(--dock-text)]">
                 {{ fmtDatetime(event.start_datetime) }}
               </p>
-              <p v-if="event.end_datetime" class="text-sm text-gray-500 dark:text-gray-400">
+              <p v-if="event.end_datetime" class="text-sm text-[var(--dock-icon)]">
                 → {{ fmtDatetime(event.end_datetime) }}
               </p>
             </template>
@@ -230,23 +221,20 @@ async function handleDelete() {
 
           <!-- Description -->
           <div v-if="event.description">
-            <label class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
               {{ __('Description') }}
             </label>
-            <p class="mt-1 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ event.description }}</p>
+            <p class="mt-1 text-sm text-[var(--dock-text)] whitespace-pre-wrap">{{ event.description }}</p>
           </div>
 
           <!-- Source app badge -->
           <div>
-            <label class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+            <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">
               {{ __('Source') }}
             </label>
             <div class="mt-1 flex items-center gap-1.5">
-              <span
-                class="w-2 h-2 rounded-full shrink-0"
-                style="background-color: var(--dock-icon)"
-              />
-              <span class="text-sm text-gray-800 dark:text-gray-200">{{ sourceLabel }}</span>
+              <span class="w-2 h-2 rounded-full shrink-0 bg-[var(--dock-icon)]" />
+              <span class="text-sm text-[var(--dock-text)]">{{ sourceLabel }}</span>
             </div>
           </div>
 
@@ -255,21 +243,21 @@ async function handleDelete() {
         <!-- Actions tab ───────────────────────────────────────────────── -->
         <div v-show="activeTab === 'actions'" class="space-y-2">
 
-          <!-- Open in source app (non-dock events or dock events with a URL) -->
+          <!-- Open in source app -->
           <a
             v-if="event.url"
             :href="event.url"
             class="w-full flex items-center gap-3 p-3 text-left
-                   bg-gray-50 dark:bg-gray-800 rounded-lg
-                   hover:bg-gray-100 dark:hover:bg-gray-700
+                   bg-black/5 dark:bg-white/5 rounded-lg
+                   hover:bg-black/10 dark:hover:bg-white/10
                    transition-colors no-underline"
           >
-            <i class="fa-solid fa-arrow-up-right-from-square text-gray-400 dark:text-gray-500" />
+            <ExternalLink class="w-4 h-4 text-[var(--dock-icon)] shrink-0" />
             <div>
-              <p class="text-sm font-medium text-gray-800 dark:text-gray-200 m-0">
+              <p class="text-sm font-medium text-[var(--dock-text)] m-0">
                 {{ __('Open in') }} {{ sourceLabel }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 m-0">
+              <p class="text-xs text-[var(--dock-icon)] m-0">
                 {{ __('View full details in the source app') }}
               </p>
             </div>
@@ -293,10 +281,8 @@ async function handleDelete() {
                      transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               @click="handleDelete"
             >
-              <i
-                :class="deleting ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-trash'"
-                class="text-red-500"
-              />
+              <Loader2 v-if="deleting" class="w-4 h-4 text-red-500 animate-spin shrink-0" />
+              <Trash2 v-else class="w-4 h-4 text-red-500 shrink-0" />
               <div>
                 <p class="text-sm font-medium text-red-700 dark:text-red-400 m-0">
                   {{ deleting ? __('Deleting…') : __('Delete Event') }}
@@ -313,11 +299,11 @@ async function handleDelete() {
             v-if="!event.url && !isNativeEvent"
             class="text-center py-8"
           >
-            <i class="fa-solid fa-circle-info fa-2x text-gray-300 dark:text-gray-600 mb-3 block" />
-            <p class="text-sm text-gray-400 dark:text-gray-500 m-0">
+            <Info class="w-8 h-8 text-[var(--dock-border)] mx-auto mb-3" />
+            <p class="text-sm text-[var(--dock-icon)] m-0">
               {{ __('No actions available') }}
             </p>
-            <p class="text-xs text-gray-300 dark:text-gray-600 mt-1">
+            <p class="text-xs text-[var(--dock-icon)] opacity-60 mt-1">
               {{ __('Manage this event in') }} {{ sourceLabel }}
             </p>
           </div>
@@ -329,12 +315,3 @@ async function handleDelete() {
 
   </aside>
 </template>
-
-<style scoped>
-.manager-tabs {
-  background: linear-gradient(to bottom, white, #fafafa);
-}
-:root.dark .manager-tabs {
-  background: linear-gradient(to bottom, rgb(17 24 39), rgb(31 41 55));
-}
-</style>

@@ -21,6 +21,10 @@ interface Notification {
   title: string; message?: string; action_url?: string; read: 0 | 1; creation: string
 }
 
+const props = defineProps<{
+  realtimeItems?: Notification[]
+}>()
+
 const emit = defineEmits<{
   markRead: [names: string[]]
   markAllRead: []
@@ -42,15 +46,23 @@ const notificationTypes = computed<Record<string, { label: string; icon: string;
   () => boot?.notification_types ?? {}
 )
 
-const items    = ref<Notification[]>([])
-const loading  = ref(true)
-const hasError = ref(false)
+const fetched   = ref<Notification[]>([])
+const loading   = ref(true)
+const hasError  = ref(false)
+const markAllBtn = ref<HTMLButtonElement>()
+
+// Merge realtime items (prepended) with fetched, deduplicated by name
+const items = computed<Notification[]>(() => {
+  const fetchedNames = new Set(fetched.value.map(n => n.name))
+  const newRealtime  = (props.realtimeItems ?? []).filter(n => !fetchedNames.has(n.name))
+  return [...newRealtime, ...fetched.value]
+})
 
 async function load() {
   loading.value  = true
   hasError.value = false
   try {
-    items.value = await callApi<Notification[]>('dock.api.notifications.get_recent', { limit: 20 })
+    fetched.value = await callApi<Notification[]>('dock.api.notifications.get_recent', { limit: 20 })
   } catch {
     hasError.value = true
   } finally {
@@ -58,18 +70,22 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  // Focus the first interactive element when dropdown opens
+  setTimeout(() => markAllBtn.value?.focus(), 50)
+})
 
 async function markRead(name: string) {
   await callApi('dock.api.notifications.mark_read', { notification_names: [name] })
-  const item = items.value.find(n => n.name === name)
+  const item = fetched.value.find(n => n.name === name)
   if (item) item.read = 1
   emit('markRead', [name])
 }
 
 async function markAllRead() {
   await callApi('dock.api.notifications.mark_all_read')
-  items.value.forEach(n => { n.read = 1 })
+  fetched.value.forEach(n => { n.read = 1 })
   emit('markAllRead')
 }
 
@@ -91,6 +107,7 @@ function navigate(n: Notification) {
     <div class="flex items-center justify-between px-3 py-2 border-b border-[var(--dock-border)]">
       <span class="text-sm font-medium text-[var(--dock-text)]">{{ __('Notifications') }}</span>
       <button
+        ref="markAllBtn"
         class="text-xs text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
         @click="markAllRead"
       >{{ __('Mark all read') }}</button>

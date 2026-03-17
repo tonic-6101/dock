@@ -5,16 +5,6 @@ import frappe
 
 
 @frappe.whitelist()
-def get_merged_settings() -> dict:
-    """
-    Returns resolved settings for the current user.
-    Cascade: Dock User Preference → Dock Settings → Dock hardcoded fallback.
-    theme is the only field that never falls back to Dock Settings (no org-level theme).
-    """
-    return _get_merged_settings(frappe.session.user)
-
-
-@frappe.whitelist()
 def save_user_preference(
     theme: str = None,
     timezone: str = None,
@@ -81,8 +71,13 @@ def save_org_settings(values: dict) -> dict:
     return _get_merged_settings(frappe.session.user)
 
 
+def _flag(val, default: bool = True) -> bool:
+    """Return bool(val) if val is not None, else default. Handles unset Frappe integer flags."""
+    return bool(val) if val is not None else default
+
+
 def _get_merged_settings(user: str) -> dict:
-    """Internal: cascade merge for a given user."""
+    """Internal: cascade merge for a given user. Called by extend_bootinfo — not a public endpoint."""
     org = frappe.get_cached_doc("Dock Settings")
 
     pref = None
@@ -118,14 +113,18 @@ def _get_merged_settings(user: str) -> dict:
         ),
         "ui_language": resolve(
             pref.ui_language if pref else None,
-            None,
+            org.get("ui_language"),
             "en",
         ),
-        "enable_global_timer": bool(org.get("enable_global_timer")),
-        "enable_bookmarks": bool(org.get("enable_bookmarks")),
-        "enable_recent_items": bool(org.get("enable_recent_items")),
+        "currency":      org.get("currency")      or "EUR",
+        "number_format": org.get("number_format") or "#.###,##",
+        "enable_global_timer": _flag(org.get("enable_global_timer"), default=True),
+        "enable_bookmarks": _flag(org.get("enable_bookmarks"), default=True),
+        "enable_recent_items": _flag(org.get("enable_recent_items"), default=True),
         "recent_items_limit": org.get("recent_items_limit") or 20,
         "site_label": org.get("site_label") or "",
+        "default_app": org.get("default_app") or "/app",
+        "privacy_policy_url": org.get("privacy_policy_url") or "",
         "notification_retention_days": org.get("notification_retention_days") or 90,
         "guest_session_default_expiry_days": org.get("guest_session_default_expiry_days") or 30,
     }

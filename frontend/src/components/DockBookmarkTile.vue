@@ -69,10 +69,10 @@ function routeFor(b: Bookmark): string {
       </div>
     </div>
 
-    <!-- Remove button -->
+    <!-- Remove button — always visible in edit mode, hover-only in normal mode -->
     <button
-      class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity
-             text-[var(--dock-icon)] hover:text-[var(--dock-text)]"
+      class="absolute top-1 right-1 transition-opacity text-[var(--dock-icon)] hover:text-[var(--dock-text)]"
+      :class="editMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       :aria-label="__('Remove bookmark')"
       @click.stop="emit('remove', bookmark.name)"
     >

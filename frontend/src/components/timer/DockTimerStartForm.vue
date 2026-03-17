@@ -16,7 +16,17 @@ interface Context { app: string; doctype: string; name: string; label: string }
 const props = defineProps<{ pending?: Context | null; loading?: boolean }>()
 const emit = defineEmits<{ start: [ctx: Context | null]; cancel: [] }>()
 
-const ctx = ref<Context | null>(props.pending ?? null)
+const ctx   = ref<Context | null>(props.pending ?? null)
+const label = ref('')
+
+function submit() {
+  if (ctx.value) {
+    emit('start', ctx.value)
+  } else {
+    // Free-text label with no document context
+    emit('start', label.value.trim() ? { app: '', doctype: '', name: '', label: label.value.trim() } : null)
+  }
+}
 </script>
 
 <template>
@@ -32,10 +42,12 @@ const ctx = ref<Context | null>(props.pending ?? null)
     </div>
     <input
       v-else
+      v-model="label"
       type="text"
       class="w-full text-sm rounded border border-[var(--dock-border)] bg-[var(--dock-bg)] text-[var(--dock-text)]
              px-2 py-1.5 placeholder-[var(--dock-icon)] focus:outline-none focus:ring-1 focus:ring-[var(--dock-accent)]"
       :placeholder="__('What are you working on?')"
+      @keydown.enter="submit"
     />
 
     <div class="flex gap-2">
@@ -43,7 +55,7 @@ const ctx = ref<Context | null>(props.pending ?? null)
         class="flex-1 px-3 py-1.5 rounded-md bg-[var(--dock-accent)] text-white text-sm font-medium
                hover:opacity-90 transition-opacity disabled:opacity-50"
         :disabled="loading"
-        @click="emit('start', ctx)"
+        @click="submit"
       >▶ {{ __('Start') }}</button>
       <button
         class="px-3 py-1.5 rounded-md text-sm text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10"

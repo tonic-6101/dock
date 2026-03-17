@@ -62,7 +62,8 @@ function handleNavigation() {
   const match = path.match(/^\/([^/]+)\/([^/]+)\/([^/]+)$/)
   if (match) {
     const [, app, doctype, docname] = match
-    if (app !== 'dock') {
+    // Skip Dock internal pages and Frappe system pages (user profiles, etc.)
+    if (app !== 'dock' && !(app === 'app' && doctype === 'user')) {
       // Find app label from registry
       type RegApp = { app: string; label: string; color?: string }
       const regApp = (registeredApps.value as RegApp[]).find(a => a.app === app)
@@ -114,6 +115,7 @@ const DockSearch          = defineAsyncComponent(() => import('./DockSearch.vue'
 const DockTimer           = defineAsyncComponent(() => import('./DockTimer.vue'))
 const DockTimerStaleWarning = defineAsyncComponent(() => import('./DockTimerStaleWarning.vue'))
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
+const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -146,6 +148,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
       <DockPinButton :current-path="currentPath" />
       <DockTimer />
       <DockCalendarIcon />
+      <DockPeopleIcon />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

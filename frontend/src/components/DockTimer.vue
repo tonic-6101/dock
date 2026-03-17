@@ -21,6 +21,7 @@ import { Clock } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
 import { useDockBoot } from '@/composables/useDockBoot'
+import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 import DockTimerStartForm from './timer/DockTimerStartForm.vue'
 import DockTimerActiveView from './timer/DockTimerActiveView.vue'
 import DockTimerStopForm from './timer/DockTimerStopForm.vue'
@@ -47,7 +48,8 @@ const timerAvailable = boot?.frappe_time_installed === true
 // State
 const timerState   = ref<TimerState>(boot?.timer_state ?? { state: 'stopped' })
 const pendingCtx   = ref<Context | null>(null)
-const open         = ref(false)
+const timerTriggerRef = ref<HTMLButtonElement | null>(null)
+const { open, toggle: toggleTimer, close: closeTimer } = useDropdownExclusion('timer', timerTriggerRef)
 const view         = ref<'start' | 'active' | 'stop' | 'edit'>('start')
 const loading      = ref(false)
 const hasError     = ref(false)
@@ -131,10 +133,10 @@ onUnmounted(() => {
 // Outside click + Esc
 function onOutsideClick(e: MouseEvent) {
   const el = document.getElementById('dock-timer-root')
-  if (el && !el.contains(e.target as Node)) open.value = false
+  if (el && !el.contains(e.target as Node)) closeTimer()
 }
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && open.value) open.value = false
+  if (e.key === 'Escape' && open.value) closeTimer()
 }
 
 // API actions
@@ -193,6 +195,7 @@ const ariaLabel = computed(() => {
   <div v-if="timerAvailable" id="dock-timer-root" class="dock-timer relative">
     <!-- Top bar button -->
     <button
+      ref="timerTriggerRef"
       class="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-sm font-mono
              hover:bg-black/5 dark:hover:bg-white/10"
       :class="{
@@ -201,14 +204,14 @@ const ariaLabel = computed(() => {
         'text-[var(--dock-icon)]':            timerState.state === 'stopped',
       }"
       :aria-label="ariaLabel"
-      @click="open = !open"
+      @click="toggleTimer"
     >
       <span
         v-if="timerState.state === 'running'"
         class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
       />
       <Clock v-else class="w-3.5 h-3.5" />
-      <span v-if="timerState.state !== 'stopped'">{{ displayTime }}</span>
+      <span v-if="timerState.state !== 'stopped'" aria-live="polite">{{ displayTime }}</span>
     </button>
 
     <!-- Popover -->
@@ -226,7 +229,7 @@ const ariaLabel = computed(() => {
           :pending="pendingCtx"
           :loading="loading"
           @start="startTimer"
-          @cancel="open = false"
+          @cancel="closeTimer"
         />
         <DockTimerActiveView
           v-else-if="view === 'active' && (timerState.state === 'running' || timerState.state === 'paused')"

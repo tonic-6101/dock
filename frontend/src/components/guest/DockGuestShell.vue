@@ -11,6 +11,7 @@ export default { name: 'DockGuestShell' }
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { __ } from '@/composables/useTranslate'
 
 const props = defineProps<{
   siteLabel: string
@@ -34,7 +35,7 @@ const siteName = computed(() => props.siteLabel || window.location.hostname)
 
     <!-- Footer -->
     <footer class="border-t border-[var(--dock-border)] px-6 py-3 text-xs text-[var(--dock-icon)] flex items-center gap-3">
-      <span>Powered by Tonic</span>
+      <span>{{ __('Powered by Tonic') }}</span>
       <template v-if="privacyPolicyUrl">
         <span>·</span>
         <a

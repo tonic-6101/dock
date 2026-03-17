@@ -2,15 +2,18 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Count
 
 
-def get_people_permission_condition(user: str = None) -> str:
-    """
-    SQL WHERE condition for People list.
-    Shows: contacts the user owns, plus all shared contacts (dock_shared=1).
-    """
-    user = user or frappe.session.user
-    return f"(`tabContact`.`dock_shared` = 1 OR `tabContact`.`owner` = {frappe.db.escape(user)})"
+def _visibility_condition(Contact, user: str, filter_mine: bool, filter_shared: bool):
+    """Return the frappe.qb WHERE condition for dock_shared visibility."""
+    if filter_mine:
+        return Contact.owner == user
+    if filter_shared:
+        return Contact.dock_shared == 1
+    # Default: own contacts OR shared contacts
+    return (Contact.dock_shared == 1) | (Contact.owner == user)
 
 
 @frappe.whitelist()
@@ -20,54 +23,89 @@ def get_list(
     query: str = None,
     filter_mine: bool = False,
     filter_shared: bool = False,
+    sort: str = "modified",
 ) -> dict:
     """
     Paginated contact list respecting the dock_shared permission model.
     filter_mine=True: only contacts owned by the current user.
     filter_shared=True: only contacts with dock_shared=1.
+    sort: "modified" (default, desc) or "name" (alphabetical asc).
+    Returns { items, total } where total is the true count across all pages.
     """
     user = frappe.session.user
+    Contact = DocType("Contact")
 
-    or_filters = []
-    if query:
+    visibility = _visibility_condition(Contact, user, bool(filter_mine), bool(filter_shared))
+
+    # Build full WHERE condition
+    if query and query.strip():
         q = f"%{query.strip()}%"
-        or_filters = [
-            ["Contact", "full_name", "like", q],
-            ["Contact", "email_id", "like", q],
-            ["Contact", "phone", "like", q],
-        ]
-
-    # Build base filter respecting visibility
-    if filter_mine:
-        filters = {"owner": user}
-    elif filter_shared:
-        filters = {"dock_shared": 1}
+        search_cond = (
+            Contact.full_name.like(q)
+            | Contact.email_id.like(q)
+            | Contact.phone.like(q)
+        )
+        where_cond = visibility & search_cond
     else:
-        # Default: user's own + shared
-        filters = {}
+        where_cond = visibility
 
     try:
-        items = frappe.get_all(
-            "Contact",
-            filters=filters,
-            or_filters=or_filters if or_filters else None,
-            fields=["name", "full_name", "email_id", "phone", "company_name",
-                    "image", "dock_shared", "owner"],
-            order_by="modified desc",
-            limit=int(limit),
-            start=int(offset),
+        # True total count (across all pages)
+        total_row = (
+            frappe.qb.from_(Contact)
+            .select(Count("*").as_("total"))
+            .where(where_cond)
+            .run(as_dict=True)
         )
-        # Apply permission filter manually (dock_shared or own)
-        items = [
-            c for c in items
-            if c.get("dock_shared") or c.get("owner") == user
-        ]
-        total = len(items)
+        total = total_row[0].get("total", 0) if total_row else 0
+
+        # Paged items
+        order_field = Contact.full_name.asc() if sort == "name" else Contact.modified.desc()
+        items = (
+            frappe.qb.from_(Contact)
+            .select(
+                Contact.name,
+                Contact.full_name,
+                Contact.email_id,
+                Contact.phone,
+                Contact.company_name,
+                Contact.image,
+                Contact.dock_shared,
+                Contact.owner,
+            )
+            .where(where_cond)
+            .orderby(order_field)
+            .limit(int(limit))
+            .offset(int(offset))
+            .run(as_dict=True)
+        )
     except Exception:
         frappe.log_error("dock.api.people.get_list failed")
         return {"items": [], "total": 0}
 
     return {"items": items, "total": total}
+
+
+@frappe.whitelist()
+def get_list_context(contact_names: list) -> dict:
+    """
+    Batch endpoint: given a list of contact names, return a dict mapping
+    contact_name → list of app names that have context data for it.
+    Used to render app-context badges on the people list view.
+    """
+    result: dict[str, list[str]] = {n: [] for n in contact_names}
+    for app in frappe.get_installed_apps():
+        hook = frappe.get_hooks("dock_people_context", app_name=app)
+        if not hook:
+            continue
+        for contact_name in contact_names:
+            try:
+                data = frappe.get_attr(hook[0])(contact_name)
+                if data:
+                    result[contact_name].append(app)
+            except Exception:
+                frappe.log_error(f"dock_people_context batch failed for app {app}")
+    return result
 
 
 @frappe.whitelist()
@@ -152,3 +190,13 @@ def update_shared(contact_name: str, dock_shared: int) -> dict:
 
     frappe.db.set_value("Contact", contact_name, "dock_shared", int(dock_shared))
     return {"dock_shared": bool(int(dock_shared))}
+
+
+def search_visibility_filter(rows: list) -> list:
+    """
+    Post-fetch filter for global search results on the Contact doctype.
+    Removes contacts that are neither shared nor owned by the current user.
+    Called via the visibility_fn key in dock_search_sections.
+    """
+    user = frappe.session.user
+    return [r for r in rows if r.get("dock_shared") or r.get("owner") == user]

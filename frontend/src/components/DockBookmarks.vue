@@ -15,10 +15,12 @@ import { ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useBookmarks } from '@/composables/useBookmarks'
+import { useDockBoot } from '@/composables/useDockBoot'
 import DockBookmarkTile from './DockBookmarkTile.vue'
 
 const emit = defineEmits<{ close: [] }>()
 
+const { settings } = useDockBoot()
 const { bookmarks, removeBookmark, reorderBookmarks } = useBookmarks()
 const editMode = ref(false)
 
@@ -33,11 +35,13 @@ function onDragOver(e: DragEvent, idx: number) {
   bookmarks.value.splice(idx, 0, moved)
   dragIdx.value = idx
 }
-function onDrop() { dragIdx.value = null }
+function onDrop() {
+  dragIdx.value = null
+  reorderBookmarks(bookmarks.value.map(b => b.name))
+}
 
 function finishEdit() {
   editMode.value = false
-  reorderBookmarks(bookmarks.value.map(b => b.name))
 }
 
 function navigate(route: string) {
@@ -47,7 +51,7 @@ function navigate(route: string) {
 </script>
 
 <template>
-  <div v-if="bookmarks.length" class="px-4 pt-3 pb-2">
+  <div v-if="bookmarks.length && settings?.enable_bookmarks !== false" class="px-4 pt-3 pb-2">
     <!-- Header -->
     <div class="flex items-center justify-between mb-2">
       <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--dock-icon)]">

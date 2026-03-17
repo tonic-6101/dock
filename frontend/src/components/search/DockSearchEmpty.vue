@@ -16,7 +16,7 @@ const emit  = defineEmits<{ clearScope: [] }>()
 <template>
   <div class="px-4 py-6 text-center text-sm text-[var(--dock-icon)]">
     <p v-if="scopedApp">
-      {{ __('No results for "{0}"').replace('{0}', query) }} {{ __('in {0}').replace('{0}', scopedApp) }}
+      {{ __('No results for "{0}" in {1}').replace('{0}', query).replace('{1}', scopedApp) }}
     </p>
     <p v-else>{{ __('No results for "{0}"').replace('{0}', query) }}</p>
     <button

@@ -9,7 +9,7 @@
     My Profile | Preferences
     ────────────────────
     Time  (if frappe_time)
-    Guest Portal | People
+    Guest Portal  (if privileged)
     ────────────────────
     [☀] [🖥] [🌙]  theme pill (icon-only)
     ────────────────────
@@ -21,14 +21,19 @@ export default { name: 'DockAvatar' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { UserCircle2, Settings, LogOut } from 'lucide-vue-next'
+import {
+  UserCircle2, User, SlidersHorizontal, Clock, DoorOpen,
+  Settings, LogOut,
+} from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useTheme } from '@/composables/useTheme'
+import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 
 const { theme, setTheme } = useTheme()
 
-const open        = ref(false)
+const triggerRef  = ref<HTMLButtonElement | null>(null)
 const wrapperRef  = ref<HTMLElement | null>(null)
+const { open, toggle, close } = useDropdownExclusion('avatar', triggerRef)
 
 // Session — Frappe Desk: window.frappe.session; /dock web pages: dockBoot.session
 const session = computed(() => window.frappe?.session ?? (window as any).dockBoot?.session)
@@ -47,6 +52,12 @@ const boot: Record<string, unknown> = (window as any).frappe?.boot ?? (window as
 const installedApps: string[] = (boot.installed_apps as string[]) ?? []
 const frappeTimeInstalled = installedApps.includes('frappe_time')
 
+// Privileged items (Guest Portal) — System Manager / Dock Manager only
+const isPrivileged = computed(() => {
+  const deskRoles = ((window as any).frappe?.boot?.user?.roles ?? []) as string[]
+  if (deskRoles.includes('System Manager') || deskRoles.includes('Dock Manager')) return true
+  return Boolean((window as any).dockBoot?.is_dock_manager)
+})
 
 // Theme options
 const themeOptions = [
@@ -58,12 +69,12 @@ const themeOptions = [
 // Close on outside click or Escape
 function onClickOutside(e: MouseEvent) {
   if (wrapperRef.value && !wrapperRef.value.contains(e.target as Node)) {
-    open.value = false
+    close()
   }
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') open.value = false
+  if (e.key === 'Escape' && open.value) close()
 }
 
 onMounted(() => {
@@ -81,6 +92,7 @@ onUnmounted(() => {
   <div ref="wrapperRef" class="dock-avatar relative">
     <!-- Trigger -->
     <button
+      ref="triggerRef"
       class="w-8 h-8 rounded-full bg-black/10 dark:bg-white/20
              hover:bg-black/15 dark:hover:bg-white/30 transition-colors
              flex items-center justify-center text-[var(--dock-text)] text-xs font-semibold overflow-hidden"
@@ -88,7 +100,7 @@ onUnmounted(() => {
       aria-haspopup="true"
       :aria-label="__('User menu')"
       :title="fullName || __('User menu')"
-      @click="open = !open"
+      @click="toggle"
     >
       <img
         v-if="session?.user_image"
@@ -126,43 +138,49 @@ onUnmounted(() => {
           <a
             :href="`/app/user/${session?.user}`"
             role="menuitem"
-            class="block px-3 py-1.5 text-sm text-[var(--dock-text)]
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            @click="open = false"
-          >{{ __('My Profile') }}</a>
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <User class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('My Profile') }}
+          </a>
           <a
             href="/dock/settings"
             role="menuitem"
-            class="block px-3 py-1.5 text-sm text-[var(--dock-text)]
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            @click="open = false"
-          >{{ __('Preferences') }}</a>
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <SlidersHorizontal class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Preferences') }}
+          </a>
         </div>
 
         <!-- § 3 — Soft-dep items -->
-        <div class="py-1 border-b border-[var(--dock-border)]">
+        <div v-if="frappeTimeInstalled || isPrivileged" class="py-1 border-b border-[var(--dock-border)]">
           <a
             v-if="frappeTimeInstalled"
             href="/app/ft-timer"
             role="menuitem"
-            class="block px-3 py-1.5 text-sm text-[var(--dock-text)]
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            @click="open = false"
-          >{{ __('Time') }}</a>
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <Clock class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Time') }}
+          </a>
           <a
+            v-if="isPrivileged"
             href="/dock/guest"
             role="menuitem"
-            class="block px-3 py-1.5 text-sm text-[var(--dock-text)]
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            @click="open = false"
-          >{{ __('Guest Portal') }}</a>
-          <a
-            href="/dock/people"
-            role="menuitem"
-            class="block px-3 py-1.5 text-sm text-[var(--dock-text)]
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            @click="open = false"
-          >{{ __('People') }}</a>
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <DoorOpen class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Guest Portal') }}
+          </a>
         </div>
 
         <!-- § 4 — Theme toggle -->
