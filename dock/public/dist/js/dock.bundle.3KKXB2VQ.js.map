@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../../apps/dock/dock/public/js/dock.bundle.js"],
+  "sourcesContent": ["// Auto-generated IIFE loader \u2014 do not edit. See vite.config.ts deskBundleLoader().\n// Frappe loads this via <script type=\"text/javascript\"> (not module), so we\n// use dynamic import() to bootstrap the real ESM entry point.\n;(function() {\n  function mount() {\n    var boot = window.frappe && window.frappe.boot && window.frappe.boot.dock;\n    if (!boot || !boot.installed) return;\n    import('/assets/dock/js/dock-desk.js').catch(function(err) {\n      console.error('[Dock] Failed to load navbar module:', err);\n    });\n  }\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', mount);\n  } else {\n    mount();\n  }\n})();\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAGC,GAAC,WAAW;AACX,aAAS,QAAQ;AACf,UAAI,OAAO,OAAO,UAAU,OAAO,OAAO,QAAQ,OAAO,OAAO,KAAK;AACrE,UAAI,CAAC,QAAQ,CAAC,KAAK;AAAW;AAC9B,aAAO,gCAAgC,MAAM,SAAS,KAAK;AACzD,gBAAQ,MAAM,wCAAwC,GAAG;AAAA,MAC3D,CAAC;AAAA,IACH;AACA,QAAI,SAAS,eAAe,WAAW;AACrC,eAAS,iBAAiB,oBAAoB,KAAK;AAAA,IACrD,OAAO;AACL,YAAM;AAAA,IACR;AAAA,EACF,GAAG;",
+  "names": []
+}

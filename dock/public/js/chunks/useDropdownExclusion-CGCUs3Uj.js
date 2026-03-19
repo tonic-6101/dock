@@ -1,1 +1,0 @@
-import{w as c,r as o}from"../dock-navbar.esm.js";const l=o(null);function r(u,f){const e=o(!1);function n(a){a?(l.value=u,e.value=!0):e.value&&(e.value=!1,l.value===u&&(l.value=null),f.value?.focus())}function s(){n(!e.value)}function t(){n(!1)}return c(l,a=>{a!==u&&e.value&&(e.value=!1)}),{open:e,toggle:s,close:t}}export{r as u};

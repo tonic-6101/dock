@@ -3,12 +3,14 @@
   Copyright (C) 2024-2026 Tonic
 
   Avatar button + account menu dropdown.
-  Structure (per ecosystem spec account-menu.md):
+  Structure:
     [Avatar] Name / email
     ────────────────────
-    My Profile | Preferences
+    My Account  → /dock/account
+    Preferences → /dock/settings
+    Bookmarks   → /dock/bookmarks
     ────────────────────
-    Time  (if frappe_time)
+    Time  (if watch)
     Guest Portal  (if privileged)
     ────────────────────
     [☀] [🖥] [🌙]  theme pill (icon-only)
@@ -22,7 +24,7 @@ export default { name: 'DockAvatar' }
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
-  UserCircle2, User, SlidersHorizontal, Clock, DoorOpen,
+  UserCircle2, User, SlidersHorizontal, Bookmark, Clock, DoorOpen,
   Settings, LogOut,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
@@ -35,8 +37,21 @@ const triggerRef  = ref<HTMLButtonElement | null>(null)
 const wrapperRef  = ref<HTMLElement | null>(null)
 const { open, toggle, close } = useDropdownExclusion('avatar', triggerRef)
 
-// Session — Frappe Desk: window.frappe.session; /dock web pages: dockBoot.session
-const session = computed(() => window.frappe?.session ?? (window as any).dockBoot?.session)
+// Session — Frappe Desk: window.frappe.session; /dock web pages: dockBoot.session;
+// Domain app SPAs (Orga, Watch): window.frappe.boot.user (different shape)
+const session = computed(() => {
+  if (window.frappe?.session) return window.frappe.session
+  if ((window as any).dockBoot?.session) return (window as any).dockBoot.session
+  const bootUser = (window as any).frappe?.boot?.user
+  if (bootUser) {
+    return {
+      user: bootUser.name || bootUser.email,
+      user_fullname: bootUser.full_name,
+      user_image: bootUser.user_image,
+    }
+  }
+  return null
+})
 
 const fullName = computed(() =>
   session.value?.user_fullname ?? session.value?.user ?? ''
@@ -50,11 +65,16 @@ const initials = computed(() => {
 // Soft-dependency checks
 const boot: Record<string, unknown> = (window as any).frappe?.boot ?? (window as any).dockBoot ?? {}
 const installedApps: string[] = (boot.installed_apps as string[]) ?? []
-const frappeTimeInstalled = installedApps.includes('frappe_time')
+const watchInstalled = installedApps.includes('watch')
 
 // Privileged items (Guest Portal) — System Manager / Dock Manager only
 const isPrivileged = computed(() => {
-  const deskRoles = ((window as any).frappe?.boot?.user?.roles ?? []) as string[]
+  // Desk: boot.user.roles; Domain SPAs (Orga/Watch): boot.user_roles
+  const deskRoles = (
+    (window as any).frappe?.boot?.user?.roles
+    ?? (window as any).frappe?.boot?.user_roles
+    ?? []
+  ) as string[]
   if (deskRoles.includes('System Manager') || deskRoles.includes('Dock Manager')) return true
   return Boolean((window as any).dockBoot?.is_dock_manager)
 })
@@ -136,14 +156,14 @@ onUnmounted(() => {
         <!-- § 2 — Core nav -->
         <div class="py-1 border-b border-[var(--dock-border)]">
           <a
-            :href="`/app/user/${session?.user}`"
+            href="/dock/account"
             role="menuitem"
             class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
                    hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
             @click="close"
           >
             <User class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
-            {{ __('My Profile') }}
+            {{ __('My Account') }}
           </a>
           <a
             href="/dock/settings"
@@ -155,12 +175,22 @@ onUnmounted(() => {
             <SlidersHorizontal class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
             {{ __('Preferences') }}
           </a>
+          <a
+            href="/dock/bookmarks"
+            role="menuitem"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <Bookmark class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Bookmarks') }}
+          </a>
         </div>
 
         <!-- § 3 — Soft-dep items -->
-        <div v-if="frappeTimeInstalled || isPrivileged" class="py-1 border-b border-[var(--dock-border)]">
+        <div v-if="watchInstalled || isPrivileged" class="py-1 border-b border-[var(--dock-border)]">
           <a
-            v-if="frappeTimeInstalled"
+            v-if="watchInstalled"
             href="/app/ft-timer"
             role="menuitem"
             class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]

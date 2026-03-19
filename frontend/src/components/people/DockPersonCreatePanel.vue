@@ -77,7 +77,7 @@ async function submit(andOpen = false) {
     )
     emit('created', contact)
     if (andOpen) {
-      router.push(`/people/${contact.name}`)
+      router.push({ name: 'dock-person', params: { name: contact.name } })
     }
     emit('close')
   } catch (e: any) {
@@ -146,7 +146,7 @@ async function submit(andOpen = false) {
           <p v-if="dupContact" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
             {{ __('This email is already on') }} {{ dupContact.full_name }} —
             <router-link
-              :to="`/people/${dupContact.name}`"
+              :to="{ name: 'dock-person', params: { name: dupContact.name } }"
               class="underline"
               @click="emit('close')"
             >{{ __('View existing →') }}</router-link>

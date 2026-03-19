@@ -6,36 +6,51 @@ import frappe
 _UNAVAILABLE = {"state": "unavailable"}
 
 
-def _frappe_time_installed() -> bool:
-    return "frappe_time" in frappe.get_installed_apps()
+def _watch_installed() -> bool:
+    return "watch" in frappe.get_installed_apps()
 
 
 def _push_realtime(state: dict) -> None:
     frappe.publish_realtime("dock_timer_update", state, user=frappe.session.user)
 
 
-@frappe.whitelist()
-def get_state() -> dict:
-    """
-    Returns current timer state for the session user.
-    state: "stopped" | "running" | "paused" | "unavailable"
-    """
-    if not _frappe_time_installed():
-        return _UNAVAILABLE
-
-    ft = frappe.get_single("FT Timer")
-    if ft.user != frappe.session.user:
+def _get_watch_state() -> dict:
+    """Fetch current timer state from Watch and map to Dock's frontend shape."""
+    try:
+        raw = frappe.call("watch.api.timer.get_timer_state")
+    except Exception:
         return {"state": "stopped"}
 
-    return {
-        "state": ft.state or "stopped",
-        "elapsed_seconds": ft.elapsed_seconds or 0,
-        "started_at": str(ft.started_at) if ft.started_at else None,
-        "context_app": ft.context_app or None,
-        "context_doctype": ft.context_doctype or None,
-        "context_name": ft.context_name or None,
-        "context_label": ft.context_label or None,
+    if not raw:
+        return {"state": "stopped"}
+
+    entry_name = raw.get("active_entry") or None
+    result = {
+        "state": raw.get("state") or "stopped",
+        "elapsed_seconds": raw.get("elapsed_seconds") or 0,
+        "started_at": raw.get("started_at"),
+        "context_label": raw.get("description") or None,
+        "entry_name": entry_name,
+        "entry_type": None,
+        "tags": [],
     }
+
+    # Fetch tags and entry_type from the active time entry
+    if entry_name and frappe.db.exists("Watch Entry", entry_name):
+        entry = frappe.get_doc("Watch Entry", entry_name)
+        result["entry_type"] = entry.get("entry_type") or "billable"
+        result["tags"] = [row.tag for row in (entry.get("tags") or [])]
+
+    return result
+
+
+@frappe.whitelist()
+def get_state() -> dict:
+    """Returns current timer state for the session user."""
+    if not _watch_installed():
+        return _UNAVAILABLE
+
+    return _get_watch_state()
 
 
 @frappe.whitelist()
@@ -44,43 +59,66 @@ def start(
     context_doctype: str = None,
     context_name: str = None,
     context_label: str = None,
+    tags: str = None,
+    entry_type: str = None,
 ) -> dict:
-    """Start or resume the timer. Returns updated state."""
-    if not _frappe_time_installed():
+    """Start the timer. Proxies watch.api.timer.start_timer."""
+    if not _watch_installed():
         return _UNAVAILABLE
 
-    state = frappe.call(
-        "frappe_time.api.timer.start",
-        context_app=context_app,
-        context_doctype=context_doctype,
-        context_name=context_name,
-        context_label=context_label,
-    )
+    kwargs: dict = {"description": context_label}
+    if tags:
+        kwargs["tags"] = tags
+    if entry_type:
+        kwargs["entry_type"] = entry_type
+    frappe.call("watch.api.timer.start_timer", **kwargs)
+    state = _get_watch_state()
+    state.update({
+        "context_app": context_app,
+        "context_doctype": context_doctype,
+        "context_name": context_name,
+        "context_label": context_label,
+    })
     _push_realtime(state)
     return state
 
 
 @frappe.whitelist()
 def pause() -> dict:
-    """Pause the running timer. Returns updated state with elapsed_seconds."""
-    if not _frappe_time_installed():
+    """Pause the running timer."""
+    if not _watch_installed():
         return _UNAVAILABLE
 
-    state = frappe.call("frappe_time.api.timer.pause")
+    frappe.call("watch.api.timer.pause_timer")
+    state = _get_watch_state()
+    _push_realtime(state)
+    return state
+
+
+@frappe.whitelist()
+def resume() -> dict:
+    """Resume a paused timer."""
+    if not _watch_installed():
+        return _UNAVAILABLE
+
+    frappe.call("watch.api.timer.resume_timer")
+    state = _get_watch_state()
     _push_realtime(state)
     return state
 
 
 @frappe.whitelist()
 def stop(notes: str = None) -> dict:
-    """
-    Stop the timer and save an FT Time Entry.
-    Returns { state: "stopped", elapsed_seconds: int, entry_name: str }.
-    """
-    if not _frappe_time_installed():
+    """Stop the timer and save a time entry."""
+    if not _watch_installed():
         return _UNAVAILABLE
 
-    state = frappe.call("frappe_time.api.timer.stop", notes=notes)
+    result = frappe.call("watch.api.timer.stop_timer", notes=notes)
+    state = _get_watch_state()
+    # Include the saved entry name from stop result
+    entry = result.get("entry") if isinstance(result, dict) else None
+    if entry and isinstance(entry, dict):
+        state["entry_name"] = entry.get("name")
     _push_realtime(state)
     return state
 
@@ -91,17 +129,25 @@ def update_context(
     context_doctype: str = None,
     context_name: str = None,
     context_label: str = None,
+    tags: str = None,
+    entry_type: str = None,
 ) -> dict:
-    """Update context of a running/paused timer without stopping it."""
-    if not _frappe_time_installed():
+    """Update context of a running/paused timer."""
+    if not _watch_installed():
         return _UNAVAILABLE
 
-    state = frappe.call(
-        "frappe_time.api.timer.update_context",
-        context_app=context_app,
-        context_doctype=context_doctype,
-        context_name=context_name,
-        context_label=context_label,
-    )
+    kwargs: dict = {"description": context_label}
+    if tags:
+        kwargs["tags"] = tags
+    if entry_type:
+        kwargs["entry_type"] = entry_type
+    frappe.call("watch.api.timer.update_timer", **kwargs)
+    state = _get_watch_state()
+    state.update({
+        "context_app": context_app,
+        "context_doctype": context_doctype,
+        "context_name": context_name,
+        "context_label": context_label,
+    })
     _push_realtime(state)
     return state

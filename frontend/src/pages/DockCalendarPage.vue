@@ -324,7 +324,12 @@ function onSlotClick(day: Date, hour: number) {
 }
 
 function navigateToCreate(src: CalendarSource, day: Date, hour: number) {
-  if (!src.create_route_template) return
+  if (!src.create_route_template) {
+    // No app-specific create route — open Dock's own create modal
+    createModalDate.value = day
+    showCreateModal.value = true
+    return
+  }
   const url = src.create_route_template
     .replace('{date}', dateKey(day))
     .replace('{time}', `${String(hour).padStart(2, '0')}:00`)
@@ -495,7 +500,9 @@ onUnmounted(() => {
           <button
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
                    bg-[var(--dock-icon)] text-white hover:opacity-90 transition-opacity"
-            @click="openCreateModal()"
+            @click="(calendarSources as CalendarSource[]).length
+              ? onSlotClick(new Date(), new Date().getHours())
+              : openCreateModal()"
           >
             <Plus class="w-3.5 h-3.5" />
             {{ __('New Event') }}

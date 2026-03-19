@@ -6,7 +6,7 @@ import frappe
 import frappe.sessions
 from dock.boot import (
     _get_registered_apps, _get_notification_types, _get_timer_state,
-    _get_recent_items, _get_bookmarks, _get_guest_views,
+    _get_recent_items, _get_bookmarks, _get_guest_views, _get_settings_sections,
 )
 from dock.api.settings import _get_merged_settings
 
@@ -37,7 +37,7 @@ def get_context(context):
         return
 
     settings = _get_merged_settings(frappe.session.user)
-    frappe_time_installed = "frappe_time" in frappe.get_installed_apps()
+    watch_installed = "watch" in frappe.get_installed_apps()
 
     boot = {
         "installed": True,
@@ -48,8 +48,8 @@ def get_context(context):
             "Dock Notification",
             {"for_user": frappe.session.user, "read": 0},
         ),
-        "frappe_time_installed": frappe_time_installed,
-        "timer_state": _get_timer_state() if frappe_time_installed else None,
+        "watch_installed": watch_installed,
+        "timer_state": _get_timer_state() if watch_installed else None,
         "recent_items": _get_recent_items(settings),
         "bookmarks": _get_bookmarks(settings),
         "session": {
@@ -69,6 +69,7 @@ def get_context(context):
             "name",
         ) is not None,
         "guest_views": _get_guest_views(),
+        "settings_sections": _get_settings_sections(),
     }
     # Pre-serialized so the template can output it with {{ dock_boot_json }}
     # without needing tojson filter (which may be blocked in safe_render mode)

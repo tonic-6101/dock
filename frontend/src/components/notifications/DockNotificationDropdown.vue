@@ -34,6 +34,16 @@ const emit = defineEmits<{
 const { registeredApps } = useDockBoot()
 const boot = (window as any).frappe?.boot?.dock ?? (window as any).dockBoot
 
+// Context-aware "View all" link — navigates within the current app
+const notificationsUrl = computed(() => {
+  const path = window.location.pathname
+  type App = { route: string }
+  const active = (registeredApps.value as App[]).find(a =>
+    a.route !== '/dock' && path.startsWith(a.route)
+  )
+  return active ? `${active.route}/notifications` : '/dock/notifications'
+})
+
 const appColorMap = computed(() => {
   const map: Record<string, string> = {}
   for (const a of (registeredApps.value as Array<{ app: string; color?: string }>) ?? []) {
@@ -134,7 +144,7 @@ function navigate(n: Notification) {
     <!-- Footer -->
     <div class="border-t border-[var(--dock-border)] px-3 py-2 text-center">
       <a
-        href="/dock/notifications"
+        :href="notificationsUrl"
         class="text-xs text-[var(--dock-accent)] hover:underline"
         @click="$emit('close')"
       >{{ __('View all notifications') }} →</a>

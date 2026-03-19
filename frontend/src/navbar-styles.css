@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2024-2026 Tonic */
+
+/* Entry point for the standalone dock-navbar.css build.
+   Contains design tokens + Tailwind utilities used by exported Dock components.
+   Domain apps load this via <link> tag — no need to scan Dock source in their Tailwind config. */
+
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -30,12 +30,15 @@ interface SectionMeta { label: string; doctype: string }
 const props = defineProps<{ returnFocusEl?: HTMLElement | null }>()
 const emit  = defineEmits<{ close: [] }>()
 
-const { registeredApps } = useDockBoot()
+const { dock, registeredApps } = useDockBoot()
 
-// ── Boot data ────────────────────────────────────────────────────────────────
-const boot = (window as any).frappe?.boot?.dock ?? (window as any).dockBoot ?? {}
-const searchSectionsByApp: Record<string, SectionMeta[]> = boot?.search_sections ?? {}
-const recentItemsEnabled = (boot?.settings?.enable_recent_items as boolean) ?? true
+// ── Boot data (reactive — may arrive async on domain-app SPAs) ───────────────
+const searchSectionsByApp = computed<Record<string, SectionMeta[]>>(
+  () => dock.value?.search_sections ?? {},
+)
+const recentItemsEnabled = computed<boolean>(
+  () => (dock.value?.settings?.enable_recent_items as boolean) ?? true,
+)
 
 const appColorMap = computed(() => {
   const map: Record<string, string> = {}
@@ -57,14 +60,17 @@ const appLabelMap = computed(() => {
 const scopedApp     = ref<string | null>(null)
 const scopedSection = ref<string | null>(null)
 
-// Auto-scope to current app based on URL
+// Auto-scope to current app based on URL (reactive — waits for async boot)
 const currentPath = window.location.pathname
-const matchedApp = (registeredApps.value as Array<{ app: string; route?: string }>)
-  .find(a => a.route && currentPath.startsWith(a.route))
-if (matchedApp) scopedApp.value = matchedApp.app
+watch(registeredApps, (apps) => {
+  if (scopedApp.value) return // already set by user interaction
+  const matched = (apps as Array<{ app: string; route?: string }>)
+    .find(a => a.route && currentPath.startsWith(a.route))
+  if (matched) scopedApp.value = matched.app
+}, { immediate: true })
 
 const sectionTabs = computed<SectionMeta[]>(() =>
-  scopedApp.value ? (searchSectionsByApp[scopedApp.value] ?? []) : [],
+  scopedApp.value ? (searchSectionsByApp.value[scopedApp.value] ?? []) : [],
 )
 
 // Show app badge when results come from multiple apps (All scope)

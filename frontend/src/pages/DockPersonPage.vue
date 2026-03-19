@@ -108,7 +108,7 @@ onMounted(fetchContact)
     <button
       class="flex items-center gap-1.5 text-sm text-[var(--dock-icon)] hover:text-[var(--dock-text)]
              transition-colors mb-6"
-      @click="router.push('/people')"
+      @click="router.push({ name: 'dock-people' })"
     >
       <ArrowLeft class="w-4 h-4" />
       {{ __('People') }}

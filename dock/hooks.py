@@ -11,8 +11,9 @@ app_license = "AGPL-3.0-or-later"
 # Inject frappe.boot.dock on every session (cache-safe — fires even on Redis-cached bootinfo)
 extend_bootinfo = "dock.boot.extend_bootinfo"
 
-# Inject Dock JS bundle into Frappe Desk
+# Inject Dock JS bundle + CSS into Frappe Desk
 app_include_js = "assets/dock/js/dock.bundle.js"
+app_include_css = "assets/dock/js/assets/dock-desk.css"
 
 # Lifecycle hooks
 after_install = "dock.install.after_install"

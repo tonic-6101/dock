@@ -46,7 +46,7 @@ const isOwner = computed(() => props.contact.owner === session?.user)
   <div
     class="group flex items-center gap-3 px-4 py-3 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]
            cursor-pointer transition-colors"
-    @click="router.push(`/people/${contact.name}`)"
+    @click="router.push({ name: 'dock-person', params: { name: contact.name } })"
   >
     <!-- Avatar -->
     <div

@@ -7,6 +7,7 @@
 function getCsrf(): string {
   return (
     window.frappe?.csrf_token ??
+    (window as any).csrf_token ??
     (window as any).dockBoot?.session?.csrf_token ??
     ''
   )

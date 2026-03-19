@@ -200,3 +200,30 @@ def search_visibility_filter(rows: list) -> list:
     """
     user = frappe.session.user
     return [r for r in rows if r.get("dock_shared") or r.get("owner") == user]
+
+
+@frappe.whitelist()
+def search_users(query: str = "", limit: int = 8) -> list:
+    """
+    Search Frappe Users by name or email. Used by the calendar attendee picker.
+    Returns [{user, full_name}] — lightweight, no Contact data.
+    """
+    if not query or len(query) < 2:
+        return []
+
+    User = DocType("User")
+    q = (
+        frappe.qb.from_(User)
+        .select(User.name.as_("user"), User.full_name)
+        .where(User.enabled == 1)
+        .where(User.user_type == "System User")
+        .where(User.name != frappe.session.user)
+        .where(
+            (User.full_name.like(f"%{query}%"))
+            | (User.name.like(f"%{query}%"))
+        )
+        .orderby(User.full_name)
+        .limit(int(limit))
+    )
+
+    return q.run(as_dict=True)

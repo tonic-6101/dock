@@ -38,15 +38,49 @@ const notes = ref('')
     />
     <div class="flex gap-2">
       <button
-        class="flex-1 px-3 py-1.5 rounded-md bg-red-500 text-white text-sm font-medium
-               hover:bg-red-600 transition-colors disabled:opacity-50"
+        class="dock-timer-btn dock-timer-btn--accent flex-1"
         :disabled="loading"
         @click="emit('stop', notes)"
       >⏹ {{ __('Stop & Save') }}</button>
       <button
-        class="px-3 py-1.5 rounded-md text-sm text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10"
+        class="dock-timer-btn dock-timer-btn--ghost"
         @click="emit('cancel')"
       >{{ __('Cancel') }}</button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.dock-timer-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--dock-border);
+  color: var(--dock-text);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dock-timer-btn:hover {
+  background: color-mix(in srgb, var(--dock-text) 8%, transparent);
+}
+.dock-timer-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dock-timer-btn--accent {
+  border-color: var(--dock-accent);
+  color: var(--dock-accent);
+}
+.dock-timer-btn--accent:hover {
+  background: color-mix(in srgb, var(--dock-accent) 10%, transparent);
+}
+.dock-timer-btn--ghost {
+  border: none;
+  color: var(--dock-icon);
+}
+.dock-timer-btn--ghost:hover {
+  color: var(--dock-text);
+}
+</style>

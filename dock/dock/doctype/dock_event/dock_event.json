@@ -12,7 +12,13 @@
   "all_day",
   "event_type",
   "color",
+  "status",
+  "section_details",
+  "location",
+  "meeting_url",
   "description",
+  "section_attendees",
+  "attendees",
   "section_source",
   "source_app",
   "source_doctype",
@@ -26,49 +32,77 @@
    "fieldtype": "Data",
    "label": "Title",
    "reqd": 1,
-   "in_list_view": 1,
-   "read_only": 1
+   "in_list_view": 1
   },
   {
    "fieldname": "start_datetime",
    "fieldtype": "Datetime",
    "label": "Start",
    "reqd": 1,
-   "in_list_view": 1,
-   "read_only": 1
+   "in_list_view": 1
   },
   {
    "fieldname": "end_datetime",
    "fieldtype": "Datetime",
-   "label": "End",
-   "read_only": 1
+   "label": "End"
   },
   {
    "fieldname": "all_day",
    "fieldtype": "Check",
    "label": "All Day",
-   "default": "0",
-   "read_only": 1
+   "default": "0"
   },
   {
    "fieldname": "event_type",
    "fieldtype": "Data",
    "label": "Event Type",
-   "description": "Type key declared in dock_calendar_sources hook",
-   "read_only": 1
+   "description": "Type key declared in dock_calendar_sources hook"
   },
   {
    "fieldname": "color",
    "fieldtype": "Data",
    "label": "Color",
-   "description": "Hex color for calendar display",
-   "read_only": 1
+   "description": "Hex color for calendar display"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Scheduled\nCompleted\nCancelled",
+   "default": "Scheduled"
+  },
+  {
+   "fieldname": "section_details",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location",
+   "description": "Physical address or room name"
+  },
+  {
+   "fieldname": "meeting_url",
+   "fieldtype": "Data",
+   "label": "Meeting URL",
+   "description": "Video conference or meeting link"
   },
   {
    "fieldname": "description",
    "fieldtype": "Text",
-   "label": "Description",
-   "read_only": 1
+   "label": "Description"
+  },
+  {
+   "fieldname": "section_attendees",
+   "fieldtype": "Section Break",
+   "label": "Attendees"
+  },
+  {
+   "fieldname": "attendees",
+   "fieldtype": "Table",
+   "label": "Attendees",
+   "options": "Dock Event Attendee"
   },
   {
    "fieldname": "section_source",
@@ -101,7 +135,6 @@
    "fieldname": "url",
    "fieldtype": "Data",
    "label": "URL",
-   "reqd": 1,
    "read_only": 1,
    "description": "Deep link back to source record"
   },
@@ -116,15 +149,15 @@
   }
  ],
  "links": [],
- "modified": "2026-03-11 00:00:00.000000",
+ "modified": "2026-03-19 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Dock",
  "name": "Dock Event",
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 0,
-   "delete": 0,
+   "create": 1,
+   "delete": 1,
    "email": 0,
    "export": 0,
    "print": 0,
@@ -132,7 +165,7 @@
    "report": 0,
    "role": "Dock User",
    "share": 0,
-   "write": 0
+   "write": 1
   }
  ],
  "sort_field": "start_datetime",

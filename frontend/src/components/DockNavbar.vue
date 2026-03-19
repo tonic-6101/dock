@@ -18,7 +18,13 @@ import { useRecentItems } from '@/composables/useRecentItems'
 import { useBookmarks } from '@/composables/useBookmarks'
 import { useSidebar } from '@/composables/useSidebar'
 
-const { toggle: toggleSidebar } = useSidebar()
+const { toggle: dockToggle } = useSidebar()
+
+// Dispatch CustomEvent so domain app sidebars (separate bundles) can react
+function toggleSidebar() {
+  dockToggle()
+  window.dispatchEvent(new CustomEvent('dock:toggleSidebar'))
+}
 
 const crashed  = ref(false)
 const scrolled = ref(false)
@@ -136,7 +142,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
     <DockSidebarToggle class="flex-shrink-0" @toggle="toggleSidebar" />
 
     <!-- App label -->
-    <DockAppLabel class="flex-shrink-0" />
+    <DockAppLabel :current-path="currentPath" />
 
     <!-- Centre: search -->
     <div class="flex-1 flex justify-center px-4">

@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2024-2026 Tonic */
+
+/* Desk injection styles — loaded via app_include_css on every Frappe Desk page.
+
+   CRITICAL: Everything is wrapped in @layer dock { } (CSS cascade layers).
+   This ensures Frappe's unlayered Bootstrap/Desk CSS always wins over Tailwind
+   when class names collide (.container, .border, .shadow, .table, .hidden, etc.).
+   Dock's utilities still apply where Frappe has no conflicting definition.
+
+   NO @tailwind base here — Preflight would reset Frappe's element styles. */
+
+@layer dock {
+  @tailwind components;
+  @tailwind utilities;
+}
+
+/* Tokens go outside the layer — they're CSS custom properties (no class conflicts) */
+@import './styles/tokens.css';

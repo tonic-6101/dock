@@ -13,7 +13,7 @@ def extend_bootinfo(bootinfo):
         return
 
     merged = _get_merged_settings(frappe.session.user)
-    frappe_time_installed = "frappe_time" in frappe.get_installed_apps()
+    watch_installed = "watch" in frappe.get_installed_apps()
 
     bootinfo.dock = {
         "installed": True,
@@ -29,9 +29,9 @@ def extend_bootinfo(bootinfo):
             "Dock Notification",
             {"for_user": frappe.session.user, "read": 0},
         ),
-        # Timer — soft dependency on frappe_time
-        "frappe_time_installed": frappe_time_installed,
-        "timer_state": _get_timer_state() if frappe_time_installed else None,
+        # Timer — soft dependency on watch (formerly frappe_time)
+        "watch_installed": watch_installed,
+        "timer_state": _get_timer_state() if watch_installed else None,
         # Recent items + bookmarks — seeded at boot to avoid extra API calls on mount
         "recent_items": _get_recent_items(merged),
         "bookmarks": _get_bookmarks(merged),
@@ -39,6 +39,38 @@ def extend_bootinfo(bootinfo):
         "search_sections": _get_search_sections(),
         # Guest views — collected from dock_guest_views hooks; used by Guest Portal shell
         "guest_views": _get_guest_views(),
+        # Settings sections — collected from dock_settings_sections hooks; drives sidebar
+        "settings_sections": _get_settings_sections(),
+    }
+
+
+@frappe.whitelist()
+def get_boot():
+    """Return dock boot data for domain-app SPAs that bypass Frappe's standard boot."""
+    if not frappe.db.exists("DocType", "Dock Settings"):
+        return {"installed": False}
+
+    merged = _get_merged_settings(frappe.session.user)
+    watch_installed = "watch" in frappe.get_installed_apps()
+
+    return {
+        "installed": True,
+        "version": __version__,
+        "settings": merged,
+        "registered_apps": _get_registered_apps(),
+        "calendar_sources": _get_calendar_sources(),
+        "notification_types": _get_notification_types(),
+        "unread_notifications": frappe.db.count(
+            "Dock Notification",
+            {"for_user": frappe.session.user, "read": 0},
+        ),
+        "watch_installed": watch_installed,
+        "timer_state": _get_timer_state() if watch_installed else None,
+        "recent_items": _get_recent_items(merged),
+        "bookmarks": _get_bookmarks(merged),
+        "search_sections": _get_search_sections(),
+        "guest_views": _get_guest_views(),
+        "settings_sections": _get_settings_sections(),
     }
 
 
@@ -175,6 +207,64 @@ def _get_guest_views():
                     "app": app,
                 })
     return views
+
+
+def _get_settings_sections():
+    """
+    Collects dock_settings_sections from all installed apps.
+    Each app declares its settings UI via hooks.py — Dock renders them in the
+    sidebar and loads the app's settings component at runtime.
+
+    Shape: [{
+        "app": "orga",
+        "label": "Orga",
+        "icon": "briefcase",
+        "route": "orga",
+        "component": "OrgaSettings",
+        "bundle": "/assets/orga/js/orga-settings.esm.js",
+        "permission": "Orga Settings",  # optional
+        "sections": [{"label": "General", "key": "general"}, ...]  # optional
+    }, ...]
+    """
+    sections = []
+    for app in frappe.get_installed_apps():
+        hook_sections = frappe.get_hooks("dock_settings_sections", app_name=app)
+        if not hook_sections:
+            continue
+        for entry in hook_sections:
+            items = entry if isinstance(entry, list) else [entry]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                # Permission check — only include if user has required role
+                perm = item.get("permission")
+                if perm:
+                    if isinstance(perm, list):
+                        perm = perm[0]
+                    user_roles = frappe.get_roles(frappe.session.user)
+                    if perm not in user_roles and "System Manager" not in user_roles:
+                        continue
+                # Unwrap single-item list values (Frappe normalizes hook values to lists)
+                unwrapped = {}
+                for k, v in item.items():
+                    if isinstance(v, list) and len(v) == 1 and k != "sections":
+                        unwrapped[k] = v[0]
+                    else:
+                        unwrapped[k] = v
+                # Unwrap nested sections list values
+                if "sections" in unwrapped:
+                    clean_sections = []
+                    raw_sections = unwrapped["sections"]
+                    if isinstance(raw_sections, list):
+                        for s in raw_sections:
+                            if isinstance(s, dict):
+                                clean_sections.append({
+                                    sk: sv[0] if isinstance(sv, list) and len(sv) == 1 else sv
+                                    for sk, sv in s.items()
+                                })
+                    unwrapped["sections"] = clean_sections
+                sections.append({"app": app, **unwrapped})
+    return sections
 
 
 def _get_search_sections():

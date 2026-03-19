@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2024-2026 Tonic
+//
+// Shared page routes — domain apps spread these into their Vue Router to render
+// Dock pages (People, Calendar, Notifications, Bookmarks) inside their own layout.
+//
+// Usage in a domain app:
+//   import { dockSharedRoutes } from '/assets/dock/js/dock-navbar.esm.js'
+//
+//   const routes = [
+//     { path: '/orga', component: Dashboard },
+//     ...dockSharedRoutes('/orga'),
+//     { path: '/:pathMatch(.*)*', component: NotFound },  // catch-all last
+//   ]
+
+import type { RouteRecordRaw } from 'vue-router'
+
+/**
+ * Returns Vue Router route definitions for Dock's shared pages.
+ *
+ * @param prefix - Route prefix matching the app's base path (e.g. '/orga', '/watch').
+ *                 Omit or pass '' for apps using a router base path instead.
+ */
+export function dockSharedRoutes(prefix: string = ''): RouteRecordRaw[] {
+  const p = prefix.replace(/\/$/, '') // strip trailing slash
+
+  return [
+    {
+      path: `${p}/people`,
+      name: 'dock-people',
+      component: () => import('./pages/DockPeoplePage.vue'),
+      meta: { dockShared: true, title: 'People' },
+    },
+    {
+      path: `${p}/people/:name`,
+      name: 'dock-person',
+      component: () => import('./pages/DockPersonPage.vue'),
+      meta: { dockShared: true, title: 'Contact' },
+    },
+    {
+      path: `${p}/calendar`,
+      name: 'dock-calendar',
+      component: () => import('./pages/DockCalendarPage.vue'),
+      meta: { dockShared: true, title: 'Calendar' },
+    },
+    {
+      path: `${p}/notifications`,
+      name: 'dock-notifications',
+      component: () => import('./pages/DockNotificationsPage.vue'),
+      meta: { dockShared: true, title: 'Notifications' },
+    },
+    {
+      path: `${p}/bookmarks`,
+      name: 'dock-bookmarks',
+      component: () => import('./pages/DockBookmarksPage.vue'),
+      meta: { dockShared: true, title: 'Bookmarks' },
+    },
+  ]
+}

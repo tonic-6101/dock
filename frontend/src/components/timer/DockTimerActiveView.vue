@@ -47,25 +47,61 @@ const emit  = defineEmits<{ pause: []; resume: []; stop: []; edit: [] }>()
     <div class="flex items-center gap-2 pt-1">
       <button
         v-if="state.state === 'running'"
-        class="flex-1 px-3 py-1.5 rounded-md bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
+        class="dock-timer-btn flex-1"
         :disabled="loading"
         @click="emit('pause')"
       >⏸ {{ __('Pause') }}</button>
       <button
         v-else
-        class="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+        class="dock-timer-btn dock-timer-btn--accent flex-1"
         :disabled="loading"
         @click="emit('resume')"
       >▶ {{ __('Resume') }}</button>
       <button
-        class="px-3 py-1.5 rounded-md bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+        class="dock-timer-btn"
         :disabled="loading"
         @click="emit('stop')"
       >⏹ {{ __('Stop') }}</button>
       <button
-        class="px-2 py-1.5 rounded-md text-xs text-[var(--dock-icon)] hover:text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10"
+        class="dock-timer-btn dock-timer-btn--icon"
         @click="emit('edit')"
       >✎</button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.dock-timer-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--dock-border);
+  color: var(--dock-text);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dock-timer-btn:hover {
+  background: color-mix(in srgb, var(--dock-text) 8%, transparent);
+}
+.dock-timer-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dock-timer-btn--accent {
+  border-color: var(--dock-accent);
+  color: var(--dock-accent);
+}
+.dock-timer-btn--accent:hover {
+  background: color-mix(in srgb, var(--dock-accent) 10%, transparent);
+}
+.dock-timer-btn--icon {
+  border: none;
+  padding: 0.375rem 0.5rem;
+  color: var(--dock-icon);
+}
+.dock-timer-btn--icon:hover {
+  color: var(--dock-text);
+}
+</style>

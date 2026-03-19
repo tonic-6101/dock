@@ -24,8 +24,6 @@ const language   = ref(props.settings.uiLanguage)
 const saving = ref(false)
 const saved  = ref(false)
 
-const user = (window as any).dockBoot?.session?.user ?? window.frappe?.session?.user ?? ''
-
 const { clearAll: clearRecentItems } = useRecentItems()
 const historyCleared = ref(false)
 
@@ -145,17 +143,6 @@ watch(language,   val => savePreference('ui_language', val))
         :placeholder="__('e.g. en, fr, de')"
       />
       <p class="mt-1 text-xs text-gray-400">{{ __('Blank = org default') }}: {{ settings.uiLanguage }}</p>
-    </div>
-
-    <!-- My Account -->
-    <div class="pt-2 border-t border-gray-100 dark:border-gray-700">
-      <a
-        :href="`/app/user/${user}`"
-        class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors underline underline-offset-2"
-      >
-        {{ __('My Account') }} →
-      </a>
-      <p class="mt-0.5 text-xs text-gray-400">{{ __('Password, 2FA, profile picture') }}</p>
     </div>
 
     <!-- Recent items privacy -->

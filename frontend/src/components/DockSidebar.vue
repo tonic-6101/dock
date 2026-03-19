@@ -2,11 +2,18 @@
   SPDX-License-Identifier: AGPL-3.0-or-later
   Copyright (C) 2024-2026 Tonic
 
-  Left navigation sidebar for the Dock SPA.
+  Left navigation sidebar for the Dock SPA — unified settings hub.
   Only rendered inside /dock/* — never injected into domain apps.
 
+  Shows three sections:
+    1. Dock settings (General, Notifications)
+    2. App settings (dynamic — from dock_settings_sections hooks)
+    3. Admin pages (Guest Portal, Ecosystem Apps — System Manager only)
+
+  Calendar and People are top bar icons (shared pages) — not sidebar items.
+
   Follows ecosystem.localhost/spec/design/ui-specs/sidebar-nav.md
-  Spec: dock.localhost/spec/features/sidebar-nav.md
+  Spec: dock.localhost/spec/features/sidebar-nav.md (revised 2026-03-19)
 -->
 <script lang="ts">
 export default { name: 'DockSidebar' }
@@ -16,7 +23,7 @@ export default { name: 'DockSidebar' }
 import { computed, type Component } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Settings, Users, CalendarDays, Bell, Link,
+  Settings, Bell, Link, LayoutGrid,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useSidebar } from '@/composables/useSidebar'
@@ -29,33 +36,70 @@ const route = useRoute()
 interface NavItem {
   path: string
   name: string
-  icon: Component
+  icon: Component | string
+  iconIsUrl?: boolean
   badge?: number
-  systemManagerOnly?: boolean
 }
 
-const unreadCount = computed(() => (dock.value as any)?.unread_count ?? 0)
+interface NavSection {
+  label: string
+  items: NavItem[]
+}
 
 const isSystemManager = computed(() => {
+  // Frappe Desk: frappe.session.user_roles
+  // Dock SPA: dockBoot.is_system_manager (flat flag, no roles array in SPA boot)
   const roles: string[] =
     (window as any).frappe?.session?.user_roles ??
     (window as any).dockBoot?.session?.user_roles ?? []
-  return roles.includes('System Manager')
+  if (roles.includes('System Manager')) return true
+  return Boolean((window as any).dockBoot?.is_system_manager)
 })
 
-const navItems = computed<NavItem[]>(() => [
-  { path: '/settings',      name: __('Settings'),      icon: Settings },
-  { path: '/people',        name: __('People'),        icon: Users },
-  { path: '/calendar',      name: __('Calendar'),      icon: CalendarDays },
-  { path: '/notifications', name: __('Notifications'), icon: Bell, badge: unreadCount.value },
-  ...(isSystemManager.value
-    ? [{ path: '/guest', name: __('Guest Portal'), icon: Link as Component, systemManagerOnly: true }]
-    : []
-  ),
+// Section 1: Dock's own settings
+const dockSettingsItems = computed<NavItem[]>(() => [
+  { path: '/settings',               name: __('General'),       icon: Settings },
+  { path: '/settings/notifications', name: __('Notifications'), icon: Bell },
 ])
 
+// Section 2: App settings (dynamic — from dock_settings_sections hooks)
+const appSettingsItems = computed<NavItem[]>(() => {
+  const sections = (dock.value as any)?.settings_sections ?? []
+  return sections.map((s: any) => ({
+    path: `/settings/app/${s.route}`,
+    name: s.label,
+    icon: s.icon_url || s.icon || Settings,
+    iconIsUrl: !!s.icon_url,
+  }))
+})
+
+// Section 3: Admin pages (System Manager only)
+const adminItems = computed<NavItem[]>(() => {
+  if (!isSystemManager.value) return []
+  return [
+    { path: '/guest', name: __('Guest Portal'),    icon: Link as Component },
+    { path: '/apps',  name: __('Ecosystem Apps'),   icon: LayoutGrid as Component },
+  ]
+})
+
+// All sections
+const sections = computed<NavSection[]>(() => {
+  const result: NavSection[] = [
+    { label: __('Dock'), items: dockSettingsItems.value },
+  ]
+  if (appSettingsItems.value.length > 0) {
+    result.push({ label: __('Apps'), items: appSettingsItems.value })
+  }
+  if (adminItems.value.length > 0) {
+    result.push({ label: __('Admin'), items: adminItems.value })
+  }
+  return result
+})
+
 function isActive(item: NavItem): boolean {
-  if (item.path === '/') return route.path === '/'
+  if (item.path === '/settings') {
+    return route.path === '/settings' || route.path === '/'
+  }
   return route.path.startsWith(item.path)
 }
 
@@ -84,34 +128,50 @@ const iconClasses = (item: NavItem): string => [
 
 <template>
   <aside :class="sidebarClasses">
-    <!-- Nav items -->
+    <!-- Nav sections -->
     <nav class="py-3 flex-1 overflow-y-auto">
-      <router-link
-        v-for="item in navItems"
-        :key="item.path"
-        :to="item.path"
-        :class="['group', itemClasses(item)]"
-        :title="collapsed ? item.name : ''"
-        @click="closeMobile()"
-      >
-        <component :is="item.icon" :class="iconClasses(item)" />
+      <template v-for="(section, sIdx) in sections" :key="section.label">
+        <!-- Section divider (not before first section) -->
+        <div
+          v-if="sIdx > 0"
+          class="border-t border-white/20 my-2"
+        />
 
-        <span v-if="!collapsed" class="flex-1 text-sm">{{ item.name }}</span>
-
-        <!-- Unread badge -->
-        <span
-          v-if="item.badge && item.badge > 0"
-          :class="[
-            'rounded-full bg-white text-dock-600 font-bold leading-none flex items-center justify-center',
-            collapsed
-              ? 'absolute top-1 right-1 w-4 h-4 text-[9px]'
-              : 'ml-auto px-1.5 py-0.5 text-[10px] min-w-[18px] text-center',
-          ]"
-          :aria-label="`${item.badge} unread`"
+        <!-- Section label (expanded only) -->
+        <div
+          v-if="!collapsed"
+          class="text-white/50 text-xs uppercase tracking-wider px-4 py-1 select-none"
+          role="group"
+          :aria-label="section.label"
         >
-          {{ item.badge > 99 ? '99+' : item.badge }}
-        </span>
-      </router-link>
+          {{ section.label }}
+        </div>
+
+        <!-- Section items -->
+        <router-link
+          v-for="item in section.items"
+          :key="item.path"
+          :to="item.path"
+          :class="['group', itemClasses(item)]"
+          :title="collapsed ? item.name : ''"
+          @click="closeMobile()"
+        >
+          <!-- Dynamic icon: URL-based or Lucide component -->
+          <img
+            v-if="item.iconIsUrl"
+            :src="item.icon as string"
+            :alt="item.name"
+            :class="iconClasses(item)"
+          />
+          <component
+            v-else
+            :is="item.icon"
+            :class="iconClasses(item)"
+          />
+
+          <span v-if="!collapsed" class="flex-1 text-sm">{{ item.name }}</span>
+        </router-link>
+      </template>
     </nav>
 
     <!-- Footer -->
@@ -133,7 +193,6 @@ const iconClasses = (item: NavItem): string => [
           :title="__('Source Code')"
           aria-label="Source Code on GitHub"
         >
-          <!-- GitHub icon via SVG (Lucide has no GitHub icon) -->
           <svg
             :class="collapsed ? 'w-6 h-6' : 'w-4 h-4'"
             viewBox="0 0 24 24"
