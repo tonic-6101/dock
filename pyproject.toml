@@ -3,7 +3,7 @@ name = "dock"
 authors = [
     { name = "Tonic", email = "tonic6101@gmail.com"}
 ]
-description = "Ecosystem coordination layer for Frappe"
+description = "Coordination Layer for Tonic's Ecosystem"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
