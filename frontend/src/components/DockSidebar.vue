@@ -179,7 +179,7 @@ const iconClasses = (item: NavItem): string => [
       <!-- Edition + version (expanded) -->
       <div v-if="!collapsed" class="px-4 pb-2">
         <div class="text-sm font-semibold text-white/80">{{ __('Community Edition') }}</div>
-        <div class="text-xs text-dock-200">v0.0.1</div>
+        <div class="text-xs text-dock-200">v0.2.0</div>
       </div>
 
       <!-- Links -->

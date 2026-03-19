@@ -120,16 +120,65 @@ def get_contact(contact_name: str) -> dict:
     if not doc.dock_shared and doc.owner != user and "System Manager" not in frappe.get_roles():
         frappe.throw(frappe._("Not permitted"), frappe.PermissionError)
 
+    # Owner full name for display
+    owner_name = frappe.db.get_value("User", doc.owner, "full_name") or doc.owner
+
+    # Tags (Frappe stores tags as _user_tags comma-separated)
+    tags = [t.strip() for t in (doc.get("_user_tags") or "").split(",") if t.strip()]
+
+    # Address via Dynamic Link
+    address = None
+    address_name = frappe.db.get_value(
+        "Dynamic Link",
+        {"link_doctype": "Contact", "link_name": doc.name, "parenttype": "Address"},
+        "parent",
+    )
+    if address_name:
+        addr_doc = frappe.get_doc("Address", address_name)
+        address = {
+            "name": addr_doc.name,
+            "display": addr_doc.get_display(),
+            "city": addr_doc.city or "",
+            "country": addr_doc.country or "",
+        }
+
+    # Last activity: most recent Comment or Communication
+    last_activity = None
+    comm = frappe.db.get_value(
+        "Communication",
+        {"reference_doctype": "Contact", "reference_name": doc.name},
+        ["communication_type", "subject", "creation"],
+        order_by="creation desc",
+        as_dict=True,
+    )
+    if comm:
+        last_activity = {
+            "type": comm.communication_type or "Communication",
+            "subject": comm.subject or "",
+            "date": str(comm.creation),
+        }
+
     return {
         "name": doc.name,
         "full_name": doc.full_name,
         "company_name": doc.company_name,
         "designation": doc.designation,
         "image": doc.image,
+        "status": doc.get("status") or "",
+        "source": doc.get("source") or "",
+        "department": doc.get("department") or "",
         "email_ids": [{"email": e.email_id, "is_primary": e.is_primary} for e in doc.email_ids],
-        "phone_nos": [{"phone": p.phone, "is_primary": p.is_primary_phone} for p in doc.phone_nos],
+        "phone_nos": [
+            {"phone": p.phone, "is_primary": p.is_primary_phone, "label": p.get("phone_type") or ""}
+            for p in doc.phone_nos
+        ],
         "dock_shared": bool(doc.dock_shared),
         "owner": doc.owner,
+        "owner_name": owner_name,
+        "modified": str(doc.modified),
+        "tags": tags,
+        "address": address,
+        "last_activity": last_activity,
     }
 
 
