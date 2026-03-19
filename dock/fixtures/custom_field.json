@@ -10,5 +10,88 @@
   "insert_after": "status",
   "module": "Dock",
   "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_birthday",
+  "dt": "Contact",
+  "fieldname": "dock_birthday",
+  "fieldtype": "Date",
+  "label": "Birthday",
+  "insert_after": "dock_shared",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_linkedin",
+  "dt": "Contact",
+  "fieldname": "dock_linkedin",
+  "fieldtype": "Data",
+  "label": "LinkedIn",
+  "options": "URL",
+  "insert_after": "dock_birthday",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_twitter",
+  "dt": "Contact",
+  "fieldname": "dock_twitter",
+  "fieldtype": "Data",
+  "label": "Twitter / X",
+  "options": "URL",
+  "insert_after": "dock_linkedin",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_github",
+  "dt": "Contact",
+  "fieldname": "dock_github",
+  "fieldtype": "Data",
+  "label": "GitHub",
+  "options": "URL",
+  "insert_after": "dock_twitter",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_website",
+  "dt": "Contact",
+  "fieldname": "dock_website",
+  "fieldtype": "Data",
+  "label": "Website",
+  "options": "URL",
+  "insert_after": "dock_github",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_archived",
+  "dt": "Contact",
+  "fieldname": "dock_archived",
+  "fieldtype": "Check",
+  "label": "Archived",
+  "default": "0",
+  "insert_after": "dock_website",
+  "module": "Dock",
+  "owner": "Administrator"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Contact-dock_do_not_contact",
+  "dt": "Contact",
+  "fieldname": "dock_do_not_contact",
+  "fieldtype": "Check",
+  "label": "Do Not Contact",
+  "default": "0",
+  "insert_after": "dock_archived",
+  "module": "Dock",
+  "owner": "Administrator"
  }
 ]

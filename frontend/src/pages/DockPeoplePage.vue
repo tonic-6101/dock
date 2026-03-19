@@ -7,8 +7,12 @@ export default { name: 'DockPeoplePage' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Search, UserPlus, ArrowUpDown } from 'lucide-vue-next'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  UserPlus, ArrowUpDown, X, ChevronDown,
+  Users, Globe, Building2, Tag,
+} from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
 import { useDockBoot } from '@/composables/useDockBoot'
@@ -22,53 +26,125 @@ interface Contact {
   phone?: string
   company_name?: string
   image?: string
-  dock_shared: number | boolean
   owner: string
+  user?: string
+  is_internal?: boolean
+  tags?: string[]
 }
 
-type FilterMode = 'all' | 'mine' | 'shared'
-type SortMode   = 'modified' | 'name'
+interface ListResponse {
+  items: Contact[]
+  total: number
+  available_tags: string[]
+  available_companies: string[]
+}
 
-const PAGE_SIZE    = 50
-const contacts     = ref<Contact[]>([])
-const total        = ref(0)
-const offset       = ref(0)
-const loading      = ref(false)
-const hasError     = ref(false)
-const searchQuery  = ref('')
-const filterMode   = ref<FilterMode>('all')
-const sortMode     = ref<SortMode>('modified')
-const showCreate   = ref(false)
+type ContactType = 'all' | 'internal' | 'external'
+type Visibility  = 'all' | 'mine'
+type Status      = 'active' | 'archived' | 'dnc'
+type SortMode    = 'recent' | 'asc' | 'desc'
 
-// App-context badges: contact_name → list of app names
-const contextBadges = ref<Record<string, string[]>>({})
+const PAGE_SIZE = 50
+
+// --- State ---
+const contacts          = ref<Contact[]>([])
+const total             = ref(0)
+const offset            = ref(0)
+const loading           = ref(false)
+const hasError          = ref(false)
+const showCreate        = ref(false)
+const contextBadges     = ref<Record<string, string[]>>({})
+
+// Filter state
+const contactType       = ref<ContactType>('all')
+const visibility        = ref<Visibility>('all')
+const status            = ref<Status>('active')
+const sortMode          = ref<SortMode>('recent')
+const selectedTags      = ref<string[]>([])
+const selectedCompany   = ref<string | null>(null)
+
+// Available filter values (populated by API)
+const availableTags     = ref<string[]>([])
+const availableCompanies = ref<string[]>([])
+
+// Dropdown open state
+const showTagDropdown     = ref(false)
+const showCompanyDropdown = ref(false)
 
 const { registeredApps } = useDockBoot()
 const hasDomainApps = computed(() => (registeredApps.value as unknown[]).length > 0)
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+// Router for URL query persistence
+let router: ReturnType<typeof useRouter> | undefined
+let route: ReturnType<typeof useRoute> | undefined
+try { router = useRouter(); route = useRoute() } catch { /* outside router */ }
 
+// Count of active filters (excluding defaults)
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (contactType.value !== 'all') n++
+  if (visibility.value !== 'all') n++
+  if (status.value !== 'active') n++
+  if (selectedTags.value.length) n++
+  if (selectedCompany.value) n++
+  return n
+})
+
+// --- URL query sync ---
+function readFiltersFromUrl() {
+  if (!route?.query) return
+  const q = route.query
+  if (q.type && ['all', 'internal', 'external'].includes(q.type as string))
+    contactType.value = q.type as ContactType
+  if (q.visibility && ['all', 'mine'].includes(q.visibility as string))
+    visibility.value = q.visibility as Visibility
+  if (q.status && ['active', 'archived', 'dnc'].includes(q.status as string))
+    status.value = q.status as Status
+  if (q.sort && ['recent', 'asc', 'desc'].includes(q.sort as string))
+    sortMode.value = q.sort as SortMode
+  if (q.tags) {
+    try { selectedTags.value = JSON.parse(q.tags as string) } catch { /* ignore */ }
+  }
+  if (q.company) selectedCompany.value = q.company as string
+}
+
+function pushFiltersToUrl() {
+  if (!router) return
+  const query: Record<string, string> = {}
+  if (contactType.value !== 'all') query.type = contactType.value
+  if (visibility.value !== 'all') query.visibility = visibility.value
+  if (status.value !== 'active') query.status = status.value
+  if (sortMode.value !== 'recent') query.sort = sortMode.value
+  if (selectedTags.value.length) query.tags = JSON.stringify(selectedTags.value)
+  if (selectedCompany.value) query.company = selectedCompany.value
+  router.replace({ query }).catch(() => {})
+}
+
+// --- Data loading ---
 async function load(reset = false) {
   if (reset) { offset.value = 0; contacts.value = []; contextBadges.value = {} }
   loading.value = true
   hasError.value = false
   try {
-    const res = await callApi<{ items: Contact[]; total: number }>(
+    const res = await callApi<ListResponse>(
       'dock.api.people.get_list',
       {
-        limit:         PAGE_SIZE,
-        offset:        offset.value,
-        query:         searchQuery.value.trim() || undefined,
-        filter_mine:   filterMode.value === 'mine',
-        filter_shared: filterMode.value === 'shared',
-        sort:          sortMode.value,
+        limit:        PAGE_SIZE,
+        offset:       offset.value,
+        contact_type: contactType.value === 'all' ? undefined : contactType.value,
+        visibility:   visibility.value === 'all' ? undefined : visibility.value,
+        status:       status.value,
+        sort:         sortMode.value,
+        tags:         selectedTags.value.length ? JSON.stringify(selectedTags.value) : undefined,
+        company:      selectedCompany.value || undefined,
       }
     )
     contacts.value = reset ? res.items : [...contacts.value, ...res.items]
     total.value    = res.total
     offset.value  += res.items.length
+    availableTags.value     = res.available_tags ?? []
+    availableCompanies.value = res.available_companies ?? []
 
-    // Fetch app-context badges for the newly loaded batch (only when domain apps exist)
     if (hasDomainApps.value && res.items.length) {
       fetchContextBadges(res.items.map(c => c.name))
     }
@@ -87,36 +163,84 @@ async function fetchContextBadges(names: string[]) {
     )
     Object.assign(contextBadges.value, result)
   } catch {
-    // badges are non-critical — silent fail
+    // non-critical
   }
 }
 
-function onSearch() {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => load(true), 250)
+// --- Filter actions ---
+function setContactType(t: ContactType) {
+  contactType.value = t
+  applyFilters()
 }
 
-function setFilter(mode: FilterMode) {
-  filterMode.value = mode
+function setVisibility(v: Visibility) {
+  visibility.value = v
+  applyFilters()
+}
+
+function setStatus(s: Status) {
+  status.value = s
+  applyFilters()
+}
+
+function setSort(s: SortMode) {
+  sortMode.value = s
+  applyFilters()
+}
+
+function toggleTag(tag: string) {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx >= 0) {
+    selectedTags.value.splice(idx, 1)
+  } else {
+    selectedTags.value.push(tag)
+  }
+  applyFilters()
+}
+
+function removeTag(tag: string) {
+  const idx = selectedTags.value.indexOf(tag)
+  if (idx >= 0) selectedTags.value.splice(idx, 1)
+  applyFilters()
+}
+
+function setCompany(c: string | null) {
+  selectedCompany.value = c
+  showCompanyDropdown.value = false
+  applyFilters()
+}
+
+function clearAllFilters() {
+  contactType.value = 'all'
+  visibility.value = 'all'
+  status.value = 'active'
+  sortMode.value = 'recent'
+  selectedTags.value = []
+  selectedCompany.value = null
+  applyFilters()
+}
+
+function applyFilters() {
+  pushFiltersToUrl()
   load(true)
-}
-
-function toggleSort() {
-  sortMode.value = sortMode.value === 'modified' ? 'name' : 'modified'
-  load(true)
-}
-
-async function toggleShared(name: string, value: boolean) {
-  await callApi('dock.api.people.update_shared', { contact_name: name, dock_shared: value ? 1 : 0 })
-  const c = contacts.value.find(c => c.name === name)
-  if (c) c.dock_shared = value ? 1 : 0
 }
 
 function onCreated(_contact: { name: string; full_name: string }) {
   load(true)
 }
 
-onMounted(() => load(true))
+// Close dropdowns on outside click
+function onDocumentClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.dock-tag-dropdown')) showTagDropdown.value = false
+  if (!target.closest('.dock-company-dropdown')) showCompanyDropdown.value = false
+}
+
+onMounted(() => {
+  readFiltersFromUrl()
+  load(true)
+  document.addEventListener('click', onDocumentClick)
+})
 </script>
 
 <template>
@@ -137,7 +261,7 @@ onMounted(() => load(true))
         </button>
       </div>
 
-      <!-- No-domain-apps banner (contacts exist but no app context available) -->
+      <!-- No-domain-apps banner -->
       <div
         v-if="!hasDomainApps && contacts.length > 0"
         class="mb-4 flex items-start gap-2 px-4 py-3 rounded-lg
@@ -147,52 +271,193 @@ onMounted(() => load(true))
         <span>{{ __('Install Orga, Micro, or other apps to see cross-app context for your contacts.') }}</span>
       </div>
 
-      <!-- Search + filters + sort -->
-      <div class="flex flex-col sm:flex-row gap-3 mb-4">
-        <!-- Search -->
-        <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--dock-icon)]" />
-          <input
-            v-model="searchQuery"
-            type="search"
-            class="w-full pl-9 pr-3 py-2 rounded-md border border-[var(--dock-border)]
-                   bg-transparent text-sm text-[var(--dock-text)]
-                   focus:outline-none focus:ring-2 focus:ring-[var(--dock-accent)]/30
-                   placeholder:text-[var(--dock-icon)]"
-            :placeholder="__('Search by name, email, or phone…')"
-            @input="onSearch"
-          />
-        </div>
-
-        <!-- Filter chips + sort toggle -->
-        <div class="flex items-center gap-2 flex-shrink-0">
+      <!-- Filter bar -->
+      <div class="flex flex-wrap items-center gap-2 mb-4">
+        <!-- Type toggle (Internal / External / All) -->
+        <div class="flex items-center rounded-full border border-[var(--dock-border)] overflow-hidden">
           <button
             v-for="chip in ([
-              { mode: 'all',    label: __('All') },
-              { mode: 'mine',   label: __('My contacts') },
-              { mode: 'shared', label: __('Shared') },
-            ] as { mode: FilterMode; label: string }[])"
-            :key="chip.mode"
-            class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-            :class="filterMode === chip.mode
+              { value: 'all',      label: __('All'), icon: null },
+              { value: 'internal', label: __('Internal'), icon: Users },
+              { value: 'external', label: __('External'), icon: Globe },
+            ] as { value: ContactType; label: string; icon: any }[])"
+            :key="chip.value"
+            class="dock-filter-chip flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="contactType === chip.value
               ? 'bg-[var(--dock-accent)] text-white'
-              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10 border border-[var(--dock-border)]'"
-            @click="setFilter(chip.mode)"
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click="setContactType(chip.value)"
+          >
+            <component :is="chip.icon" v-if="chip.icon" class="w-3 h-3" />
+            {{ chip.label }}
+          </button>
+        </div>
+
+        <!-- Visibility toggle (All / My contacts / Shared) -->
+        <div class="flex items-center rounded-full border border-[var(--dock-border)] overflow-hidden">
+          <button
+            v-for="chip in ([
+              { value: 'all',    label: __('All') },
+              { value: 'mine',   label: __('Mine') },
+            ] as { value: Visibility; label: string }[])"
+            :key="chip.value"
+            class="dock-filter-chip px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="visibility === chip.value
+              ? 'bg-[var(--dock-accent)] text-white'
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click="setVisibility(chip.value)"
           >
             {{ chip.label }}
           </button>
+        </div>
 
-          <!-- Sort toggle -->
+        <!-- Status toggle -->
+        <div class="flex items-center rounded-full border border-[var(--dock-border)] overflow-hidden">
           <button
-            class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors
-                   text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10 border border-[var(--dock-border)]"
-            :title="sortMode === 'modified' ? __('Sort: last modified — click for A–Z') : __('Sort: A–Z — click for last modified')"
-            @click="toggleSort"
+            v-for="chip in ([
+              { value: 'active',   label: __('Active') },
+              { value: 'archived', label: __('Archived') },
+              { value: 'dnc',      label: __('Do Not Contact') },
+            ] as { value: Status; label: string }[])"
+            :key="chip.value"
+            class="dock-filter-chip px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="status === chip.value
+              ? 'bg-[var(--dock-accent)] text-white'
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click="setStatus(chip.value)"
           >
-            <ArrowUpDown class="w-3 h-3" />
-            {{ sortMode === 'modified' ? __('Recent') : __('A–Z') }}
+            {{ chip.label }}
           </button>
         </div>
+
+        <!-- Tags dropdown -->
+        <div class="relative dock-tag-dropdown">
+          <button
+            class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors
+                   border border-[var(--dock-border)]"
+            :class="selectedTags.length
+              ? 'bg-[var(--dock-accent)]/10 text-[var(--dock-accent)] border-[var(--dock-accent)]/30'
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click.stop="showTagDropdown = !showTagDropdown"
+          >
+            <Tag class="w-3 h-3" />
+            {{ __('Tags') }}
+            <span v-if="selectedTags.length" class="ml-0.5 bg-[var(--dock-accent)] text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px]">
+              {{ selectedTags.length }}
+            </span>
+            <ChevronDown class="w-3 h-3" />
+          </button>
+          <div
+            v-if="showTagDropdown"
+            class="absolute left-0 top-full mt-1 z-30 w-56 max-h-60 overflow-y-auto
+                   bg-[var(--dock-bg)] border border-[var(--dock-border)] rounded-lg shadow-lg py-1"
+          >
+            <div v-if="!availableTags.length" class="px-3 py-2 text-xs text-[var(--dock-icon)]">
+              {{ __('No tags found') }}
+            </div>
+            <button
+              v-for="tag in availableTags"
+              :key="tag"
+              class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left
+                     hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              :class="selectedTags.includes(tag) ? 'text-[var(--dock-accent)] font-medium' : 'text-[var(--dock-text)]'"
+              @click.stop="toggleTag(tag)"
+            >
+              <span class="w-3 h-3 rounded border flex items-center justify-center flex-shrink-0"
+                    :class="selectedTags.includes(tag) ? 'bg-[var(--dock-accent)] border-[var(--dock-accent)]' : 'border-[var(--dock-border)]'">
+                <svg v-if="selectedTags.includes(tag)" class="w-2 h-2 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 6l3 3 5-5" />
+                </svg>
+              </span>
+              {{ tag }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Company dropdown -->
+        <div v-if="availableCompanies.length" class="relative dock-company-dropdown">
+          <button
+            class="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors
+                   border border-[var(--dock-border)]"
+            :class="selectedCompany
+              ? 'bg-[var(--dock-accent)]/10 text-[var(--dock-accent)] border-[var(--dock-accent)]/30'
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click.stop="showCompanyDropdown = !showCompanyDropdown"
+          >
+            <Building2 class="w-3 h-3" />
+            {{ selectedCompany || __('Company') }}
+            <ChevronDown class="w-3 h-3" />
+          </button>
+          <div
+            v-if="showCompanyDropdown"
+            class="absolute left-0 top-full mt-1 z-30 w-56 max-h-60 overflow-y-auto
+                   bg-[var(--dock-bg)] border border-[var(--dock-border)] rounded-lg shadow-lg py-1"
+          >
+            <button
+              v-if="selectedCompany"
+              class="w-full px-3 py-1.5 text-xs text-left text-[var(--dock-icon)]
+                     hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              @click.stop="setCompany(null)"
+            >
+              {{ __('All companies') }}
+            </button>
+            <button
+              v-for="c in availableCompanies"
+              :key="c"
+              class="w-full px-3 py-1.5 text-xs text-left hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              :class="selectedCompany === c ? 'text-[var(--dock-accent)] font-medium' : 'text-[var(--dock-text)]'"
+              @click.stop="setCompany(c)"
+            >
+              {{ c }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Sort -->
+        <div class="flex items-center rounded-full border border-[var(--dock-border)] overflow-hidden">
+          <button
+            v-for="chip in ([
+              { value: 'recent', label: __('Recent') },
+              { value: 'asc',    label: __('A→Z') },
+              { value: 'desc',   label: __('Z→A') },
+            ] as { value: SortMode; label: string }[])"
+            :key="chip.value"
+            class="dock-filter-chip flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="sortMode === chip.value
+              ? 'bg-[var(--dock-accent)] text-white'
+              : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+            @click="setSort(chip.value)"
+          >
+            <ArrowUpDown v-if="chip.value === sortMode" class="w-3 h-3" />
+            {{ chip.label }}
+          </button>
+        </div>
+
+        <!-- Clear all (when filters active) -->
+        <button
+          v-if="activeFilterCount > 0"
+          class="flex items-center gap-1 px-2 py-1.5 rounded-full text-xs text-[var(--dock-icon)]
+                 hover:text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+          @click="clearAllFilters"
+        >
+          <X class="w-3 h-3" />
+          {{ __('Clear filters') }}
+        </button>
+      </div>
+
+      <!-- Active tag pills (removable) -->
+      <div v-if="selectedTags.length" class="flex flex-wrap items-center gap-1.5 mb-3">
+        <span
+          v-for="tag in selectedTags"
+          :key="tag"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                 bg-[var(--dock-accent)]/10 text-[var(--dock-accent)]"
+        >
+          {{ tag }}
+          <button class="hover:opacity-70" @click="removeTag(tag)">
+            <X class="w-2.5 h-2.5" />
+          </button>
+        </span>
       </div>
 
       <!-- List -->
@@ -222,11 +487,20 @@ onMounted(() => load(true))
           <button class="text-xs text-[var(--dock-accent)] hover:underline" @click="load(true)">{{ __('Retry') }}</button>
         </div>
 
-        <!-- Empty -->
+        <!-- Empty (no results after filtering) -->
         <div v-else-if="!contacts.length" class="px-4 py-10 text-center">
-          <p class="text-sm text-[var(--dock-icon)] mb-1">{{ __('No contacts found') }}</p>
-          <p class="text-xs text-[var(--dock-icon)]/60">
-            {{ __('Create a contact or adjust your filters') }}
+          <p class="text-sm text-[var(--dock-icon)] mb-1">
+            {{ activeFilterCount > 0 ? __('No contacts match these filters') : __('No contacts found') }}
+          </p>
+          <button
+            v-if="activeFilterCount > 0"
+            class="text-xs text-[var(--dock-accent)] hover:underline mt-1"
+            @click="clearAllFilters"
+          >
+            {{ __('Clear filters') }}
+          </button>
+          <p v-else class="text-xs text-[var(--dock-icon)]/60">
+            {{ __('Create a contact to get started') }}
           </p>
         </div>
 
@@ -237,7 +511,6 @@ onMounted(() => load(true))
             :key="c.name"
             :contact="c"
             :app-badges="contextBadges[c.name] ?? []"
-            @toggle-shared="toggleShared"
           />
         </div>
 
@@ -265,3 +538,10 @@ onMounted(() => load(true))
     />
   </div>
 </template>
+
+<style>
+/* Ensure first/last child in toggle groups have rounded corners */
+.dock-filter-chip:first-child { border-radius: 9999px 0 0 9999px; }
+.dock-filter-chip:last-child  { border-radius: 0 9999px 9999px 0; }
+.dock-filter-chip:only-child  { border-radius: 9999px; }
+</style>

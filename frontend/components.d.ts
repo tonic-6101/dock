@@ -25,6 +25,7 @@ declare module 'vue' {
     DockJana: typeof import('./src/components/DockJana.vue')['default']
     DockLayout: typeof import('./src/components/DockLayout.vue')['default']
     DockNavbar: typeof import('./src/components/DockNavbar.vue')['default']
+    DockNotesIcon: typeof import('./src/components/DockNotesIcon.vue')['default']
     DockNotificationDropdown: typeof import('./src/components/notifications/DockNotificationDropdown.vue')['default']
     DockNotificationEmpty: typeof import('./src/components/notifications/DockNotificationEmpty.vue')['default']
     DockNotificationError: typeof import('./src/components/notifications/DockNotificationError.vue')['default']

@@ -9,7 +9,7 @@ export default { name: 'DockPersonRow' }
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Mail, Phone, Share2, CalendarDays } from 'lucide-vue-next'
+import { Mail, Phone, CalendarDays } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 
 interface Contact {
@@ -19,15 +19,17 @@ interface Contact {
   phone?: string
   company_name?: string
   image?: string
-  dock_shared: number | boolean
   owner: string
+  user?: string
+  is_internal?: boolean
+  tags?: string[]
 }
 
 const props = defineProps<{
   contact: Contact
   appBadges?: string[]   // app names that have context data for this contact
 }>()
-const emit = defineEmits<{ toggleShared: [name: string, value: boolean] }>()
+const emit = defineEmits<{}>()
 
 // useRouter() may return undefined when this component is loaded via the ESM
 // bundle inside a domain app (bundled vue-router has a different inject key).
@@ -49,7 +51,9 @@ const initials = computed(() => {
   return n.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 })
 
-const isShared = computed(() => Boolean(props.contact.dock_shared))
+const isInternal = computed(() => Boolean(props.contact.is_internal || props.contact.user))
+const visibleTags = computed(() => (props.contact.tags ?? []).slice(0, 3))
+const overflowTagCount = computed(() => Math.max(0, (props.contact.tags?.length ?? 0) - 3))
 
 const session = (window as any).frappe?.session ?? (window as any).dockBoot?.session
 const isOwner = computed(() => props.contact.owner === session?.user)
@@ -74,6 +78,19 @@ const isOwner = computed(() => props.contact.owner === session?.user)
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
         <p class="text-sm font-medium text-[var(--dock-text)] truncate">{{ contact.full_name }}</p>
+        <!-- Internal/External badge -->
+        <span
+          v-if="isInternal"
+          class="dock-person-type-badge flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium
+                 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          :title="__('Internal — has a user account')"
+        >{{ __('Internal') }}</span>
+        <span
+          v-else
+          class="dock-person-type-badge flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium
+                 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+          :title="__('External — no user account')"
+        >{{ __('External') }}</span>
         <!-- App-context badges -->
         <span
           v-for="app in appBadges"
@@ -82,7 +99,24 @@ const isOwner = computed(() => props.contact.owner === session?.user)
                  bg-black/[0.06] dark:bg-white/[0.06] text-[var(--dock-icon)]"
         >{{ app }}</span>
       </div>
-      <p v-if="contact.company_name" class="text-xs text-[var(--dock-icon)] truncate">{{ contact.company_name }}</p>
+      <div class="flex items-center gap-1.5 min-w-0">
+        <p v-if="contact.company_name" class="text-xs text-[var(--dock-icon)] truncate">{{ contact.company_name }}</p>
+        <!-- Tag pills -->
+        <template v-if="visibleTags.length">
+          <span class="dock-person-tags flex items-center gap-1">
+            <span
+              v-for="tag in visibleTags"
+              :key="tag"
+              class="px-1.5 py-0 rounded-full text-[9px] font-medium
+                     bg-black/[0.05] dark:bg-white/[0.08] text-[var(--dock-icon)]"
+            >{{ tag }}</span>
+            <span
+              v-if="overflowTagCount > 0"
+              class="text-[9px] text-[var(--dock-icon)]"
+            >+{{ overflowTagCount }}</span>
+          </span>
+        </template>
+      </div>
     </div>
 
     <!-- Email + phone (md+ via media query, not Tailwind — avoids cross-bundle cascade) -->
@@ -96,17 +130,6 @@ const isOwner = computed(() => props.contact.owner === session?.user)
         {{ contact.phone }}
       </span>
     </div>
-
-    <!-- Shared badge -->
-    <span
-      v-if="isShared"
-      class="dock-person-shared items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
-             bg-[var(--dock-accent)]/10 text-[var(--dock-accent)]"
-      :title="__('Shared with team')"
-    >
-      <Share2 class="w-2.5 h-2.5" />
-      {{ __('Shared') }}
-    </span>
 
     <!-- Hover quick actions -->
     <div
@@ -135,18 +158,6 @@ const isOwner = computed(() => props.contact.owner === session?.user)
         <CalendarDays class="w-3.5 h-3.5" />
       </a>
 
-      <!-- Share toggle (owner only) -->
-      <button
-        v-if="isOwner"
-        class="w-7 h-7 flex items-center justify-center rounded transition-colors"
-        :class="isShared
-          ? 'text-[var(--dock-accent)] hover:bg-[var(--dock-accent)]/10'
-          : 'text-[var(--dock-icon)] hover:text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10'"
-        :title="isShared ? __('Remove from shared') : __('Share with team')"
-        @click="emit('toggleShared', contact.name, !isShared)"
-      >
-        <Share2 class="w-3.5 h-3.5" />
-      </button>
     </div>
   </div>
 </template>
@@ -155,14 +166,16 @@ const isOwner = computed(() => props.contact.owner === session?.user)
 /* Responsive display rules using plain CSS to avoid cross-bundle Tailwind cascade conflicts.
    These classes are namespaced with dock-person- to prevent collisions. */
 .dock-person-meta { display: none; }
-.dock-person-shared { display: none; }
 .dock-person-app-badge { display: none; }
+.dock-person-type-badge { display: none; }
+.dock-person-tags { display: none; }
 
 @media (min-width: 768px) {
   .dock-person-meta { display: flex; }
+  .dock-person-tags { display: flex; }
 }
 @media (min-width: 640px) {
-  .dock-person-shared { display: inline-flex; }
   .dock-person-app-badge { display: inline-flex; }
+  .dock-person-type-badge { display: inline-flex; }
 }
 </style>

@@ -4,7 +4,7 @@
 
   Pin / unpin button shown in the navbar on /{app}/{doctype}/{name} URLs.
   Filled = already bookmarked; outline = not yet bookmarked.
-  Hidden on list pages, settings pages, and /dock/* routes.
+  Hidden on list pages and settings pages (fewer than 3 URL segments).
   Disabled when the bookmark limit (12) is reached.
 -->
 <script lang="ts">
@@ -35,8 +35,6 @@ const parsed = computed<ParsedRoute | null>(() => {
   const match = props.currentPath.match(/^\/([^/]+)\/([^/]+)\/([^/]+)$/)
   if (!match) return null
   const [, app, doctype, docname] = match
-  // Skip /dock/* and obviously non-record paths
-  if (app === 'dock') return null
   return { app, doctype, docname: decodeURIComponent(docname) }
 })
 

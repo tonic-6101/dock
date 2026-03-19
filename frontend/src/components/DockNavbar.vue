@@ -122,6 +122,7 @@ const DockTimer           = defineAsyncComponent(() => import('./DockTimer.vue')
 const DockTimerStaleWarning = defineAsyncComponent(() => import('./DockTimerStaleWarning.vue'))
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
+const DockNotesIcon       = defineAsyncComponent(() => import('./DockNotesIcon.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -155,6 +156,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
       <DockTimer />
       <DockCalendarIcon />
       <DockPeopleIcon />
+      <DockNotesIcon />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

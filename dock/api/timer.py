@@ -25,10 +25,13 @@ def _get_watch_state() -> dict:
         return {"state": "stopped"}
 
     entry_name = raw.get("active_entry") or None
+    started_at = raw.get("started_at")
+    if hasattr(started_at, "isoformat"):
+        started_at = started_at.isoformat()
     result = {
         "state": raw.get("state") or "stopped",
         "elapsed_seconds": raw.get("elapsed_seconds") or 0,
-        "started_at": raw.get("started_at"),
+        "started_at": started_at,
         "context_label": raw.get("description") or None,
         "entry_name": entry_name,
         "entry_type": None,

@@ -159,13 +159,17 @@ def _get_notification_types():
 def _get_recent_items(settings):
     if not settings.get("enable_recent_items"):
         return []
-    return frappe.get_all(
+    items = frappe.get_all(
         "Dock Recent Item",
         filters={"user": frappe.session.user},
         fields=["name", "app", "ref_doctype as doctype", "docname", "label", "icon", "visited_at"],
         order_by="visited_at desc",
         limit=8,
     )
+    for item in items:
+        if hasattr(item.get("visited_at"), "isoformat"):
+            item["visited_at"] = item["visited_at"].isoformat()
+    return items
 
 
 def _get_bookmarks(settings):

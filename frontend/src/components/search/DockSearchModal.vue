@@ -60,14 +60,37 @@ const appLabelMap = computed(() => {
 const scopedApp     = ref<string | null>(null)
 const scopedSection = ref<string | null>(null)
 
-// Auto-scope to current app based on URL (reactive — waits for async boot)
+// Auto-scope to current app and section based on URL (reactive — waits for async boot)
 const currentPath = window.location.pathname
-watch(registeredApps, (apps) => {
+watch([registeredApps, searchSectionsByApp], ([apps, sections]) => {
   if (scopedApp.value) return // already set by user interaction
   const matched = (apps as Array<{ app: string; route?: string }>)
     .find(a => a.route && currentPath.startsWith(a.route))
-  if (matched) scopedApp.value = matched.app
+  if (matched) {
+    scopedApp.value = matched.app
+    // Section-level pre-scoping: if on a page matching a section route, pre-select it
+    _autoScopeSection(matched.app, sections as Record<string, SectionMeta[]>)
+  } else {
+    // Check Dock's own routes (e.g. /dock/people)
+    if (currentPath.match(/\/people(\/|$)/)) {
+      scopedApp.value = 'dock'
+      _autoScopeSection('dock', sections as Record<string, SectionMeta[]>)
+    }
+  }
 }, { immediate: true })
+
+function _autoScopeSection(app: string, sections: Record<string, SectionMeta[]>) {
+  if (scopedSection.value) return // already set by user
+  const appSections = sections[app] ?? []
+  // Match route segment to section label
+  if (currentPath.match(/\/people(\/|$)/)) {
+    const peopleSection = appSections.find(s => s.label === 'People')
+    if (peopleSection) scopedSection.value = peopleSection.label
+  } else if (currentPath.match(/\/calendar(\/|$)/)) {
+    const calSection = appSections.find(s => s.label === 'Calendar' || s.doctype === 'Dock Event')
+    if (calSection) scopedSection.value = calSection.label
+  }
+}
 
 const sectionTabs = computed<SectionMeta[]>(() =>
   scopedApp.value ? (searchSectionsByApp.value[scopedApp.value] ?? []) : [],

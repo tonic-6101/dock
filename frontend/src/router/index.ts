@@ -63,6 +63,11 @@ const router = createRouter({
       component: () => import('@/pages/DockCalendarPage.vue'),
     },
     {
+      path: '/notes',
+      name: 'dock-notes',
+      component: () => import('@/pages/DockNotesPage.vue'),
+    },
+    {
       path: '/bookmarks',
       name: 'dock-bookmarks',
       component: () => import('@/pages/DockBookmarksPage.vue'),

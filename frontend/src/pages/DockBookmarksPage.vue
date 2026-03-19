@@ -81,7 +81,7 @@ function navigate(route: string) {
     <!-- Grid -->
     <div
       v-else
-      class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+      class="dock-bookmarks-grid gap-3"
     >
       <div
         v-for="(bm, idx) in bookmarks"
@@ -101,3 +101,21 @@ function navigate(route: string) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Responsive grid — plain CSS to avoid Tailwind cascade conflicts in consuming apps */
+.dock-bookmarks-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .dock-bookmarks-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .dock-bookmarks-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+</style>

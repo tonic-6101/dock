@@ -44,6 +44,12 @@ export function dockSharedRoutes(prefix: string = ''): RouteRecordRaw[] {
       meta: { dockShared: true, title: 'Calendar' },
     },
     {
+      path: `${p}/notes`,
+      name: 'dock-notes',
+      component: () => import('./pages/DockNotesPage.vue'),
+      meta: { dockShared: true, title: 'Notes' },
+    },
+    {
       path: `${p}/notifications`,
       name: 'dock-notifications',
       component: () => import('./pages/DockNotificationsPage.vue'),

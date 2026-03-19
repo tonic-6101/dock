@@ -91,7 +91,7 @@ onMounted(fetchShares)
 
     <!-- Drawer panel -->
     <aside
-      class="fixed right-0 top-0 h-full w-full sm:w-96 z-50
+      class="dock-share-drawer-panel fixed right-0 top-0 h-full z-50
              bg-[var(--dock-bg)] border-l border-[var(--dock-border)]
              flex flex-col shadow-xl"
       role="dialog"
@@ -163,3 +163,15 @@ onMounted(fetchShares)
     </aside>
   </Teleport>
 </template>
+
+<style scoped>
+/* Responsive width — plain CSS to avoid Tailwind cascade conflicts in consuming apps */
+.dock-share-drawer-panel {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .dock-share-drawer-panel {
+    width: 24rem; /* 384px = w-96 */
+  }
+}
+</style>

@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2024-2026 Tonic
 
-import json
 import frappe
 import frappe.sessions
 from dock.boot import (
@@ -33,7 +32,7 @@ def get_context(context):
             # Guest views needed to resolve the iframe URL for the portal shell
             "guest_views": _get_guest_views(),
         }
-        context.dock_boot_json = json.dumps(boot)
+        context.dock_boot_json = frappe.as_json(boot)
         return
 
     settings = _get_merged_settings(frappe.session.user)
@@ -73,5 +72,5 @@ def get_context(context):
     }
     # Pre-serialized so the template can output it with {{ dock_boot_json }}
     # without needing tojson filter (which may be blocked in safe_render mode)
-    context.dock_boot_json = json.dumps(boot)
+    context.dock_boot_json = frappe.as_json(boot)
 

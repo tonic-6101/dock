@@ -228,7 +228,7 @@ onUnmounted(() => {
 <template>
   <div ref="containerRef" class="dock-search relative">
     <!-- ═══ Desktop: always-visible search bar ═══ -->
-    <div class="!hidden md:!flex items-center flex-1 max-w-lg relative">
+    <div class="dock-search-desktop items-center flex-1 max-w-lg relative">
       <div
         class="dock-search-bar flex items-center w-full h-9 rounded-lg border
                bg-white dark:bg-gray-800 overflow-hidden transition-all"
@@ -310,7 +310,7 @@ onUnmounted(() => {
     <!-- ═══ Mobile: icon button → full modal (hidden on md+ via !important to survive cross-file CSS) ═══ -->
     <button
       ref="pillRef"
-      class="dock-search-mobile flex md:!hidden items-center justify-center w-8 h-8 rounded-md
+      class="dock-search-mobile items-center justify-center w-8 h-8 rounded-md
              text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
       :aria-label="__('Search')"
       @click="openModal"
@@ -324,6 +324,22 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Responsive show/hide — plain CSS to avoid Tailwind cascade conflicts in consuming apps */
+.dock-search-desktop {
+  display: none;
+}
+.dock-search-mobile {
+  display: flex;
+}
+@media (min-width: 768px) {
+  .dock-search-desktop {
+    display: flex;
+  }
+  .dock-search-mobile {
+    display: none;
+  }
+}
+
 /* Native select arrow override */
 .dock-search-bar select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");

@@ -39,6 +39,7 @@ permission_query_conditions = {
     "Dock Event":          "dock.dock.doctype.dock_event.dock_event.get_permission_query_conditions",
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.get_permission_query_conditions",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.get_permission_query_conditions",
+    "Dock Note":           "dock.dock.doctype.dock_note.dock_note.get_permission_query_conditions",
 }
 
 # Document-level permission checks (single record access)
@@ -49,6 +50,7 @@ has_permission = {
     "Dock Event":          "dock.dock.doctype.dock_event.dock_event.has_permission",
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.has_permission",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.has_permission",
+    "Dock Note":           "dock.dock.doctype.dock_note.dock_note.has_permission",
 }
 
 # Scheduled cleanup: remove old read notifications beyond retention window
@@ -58,11 +60,11 @@ scheduler_events = {
     ],
 }
 
-# Ship dock_shared custom field on Frappe Contact
+# Ship Dock custom fields on Frappe Contact
 fixtures = [
     {
         "dt": "Custom Field",
-        "filters": [["dt", "=", "Contact"], ["fieldname", "=", "dock_shared"]],
+        "filters": [["dt", "=", "Contact"], ["fieldname", "like", "dock_%"]],
     }
 ]
 
@@ -80,10 +82,6 @@ dock_search_sections = [
         "search_fields": ["full_name", "email_id", "phone"],
         "display_field": "full_name",
         "route_template": "/dock/people/{name}",
-        # extra_fields are fetched for filtering but stripped from search output
-        "extra_fields": ["owner", "dock_shared"],
-        # visibility_fn enforces the dock_shared privacy model on search results
-        "visibility_fn": "dock.api.people.search_visibility_filter",
     },
 ]
 
