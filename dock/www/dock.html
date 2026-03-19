@@ -9,7 +9,10 @@
 </head>
 <body>
   <div id="dock-app"></div>
-  <script>window.dockBoot = {{ dock_boot_json }};</script>
+  <script>
+    window.dockBoot = {{ dock_boot_json }};
+    window.csrf_token = window.dockBoot.session && window.dockBoot.session.csrf_token || "";
+  </script>
   <script type="module" src="/assets/dock/js/dock-app.js"></script>
 </body>
 </html>

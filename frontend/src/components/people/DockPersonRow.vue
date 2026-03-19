@@ -29,7 +29,20 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ toggleShared: [name: string, value: boolean] }>()
 
-const router = useRouter()
+// useRouter() may return undefined when this component is loaded via the ESM
+// bundle inside a domain app (bundled vue-router has a different inject key).
+let router: ReturnType<typeof useRouter> | undefined
+try { router = useRouter() } catch { /* outside router context */ }
+
+function navigate(to: { name: string; params?: Record<string, string> } | string) {
+  if (router) {
+    router.push(to)
+  } else {
+    const base = window.location.pathname.replace(/\/(people|calendar|bookmarks|notifications)\/?.*$/, '')
+    const path = typeof to === 'string' ? to : `/${to.name === 'dock-person' ? 'people/' + to.params?.name : to.name.replace('dock-', '')}`
+    window.location.href = base + path
+  }
+}
 
 const initials = computed(() => {
   const n = props.contact.full_name || '?'
@@ -46,7 +59,7 @@ const isOwner = computed(() => props.contact.owner === session?.user)
   <div
     class="group flex items-center gap-3 px-4 py-3 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]
            cursor-pointer transition-colors"
-    @click="router.push({ name: 'dock-person', params: { name: contact.name } })"
+    @click="navigate({ name: 'dock-person', params: { name: contact.name } })"
   >
     <!-- Avatar -->
     <div
@@ -65,15 +78,15 @@ const isOwner = computed(() => props.contact.owner === session?.user)
         <span
           v-for="app in appBadges"
           :key="app"
-          class="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wide
+          class="dock-person-app-badge px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wide
                  bg-black/[0.06] dark:bg-white/[0.06] text-[var(--dock-icon)]"
         >{{ app }}</span>
       </div>
       <p v-if="contact.company_name" class="text-xs text-[var(--dock-icon)] truncate">{{ contact.company_name }}</p>
     </div>
 
-    <!-- Email + phone (md+) -->
-    <div class="hidden md:flex items-center gap-4 flex-shrink-0">
+    <!-- Email + phone (md+ via media query, not Tailwind — avoids cross-bundle cascade) -->
+    <div class="dock-person-meta items-center gap-4 flex-shrink-0">
       <span v-if="contact.email_id" class="flex items-center gap-1 text-xs text-[var(--dock-icon)]">
         <Mail class="w-3 h-3" />
         {{ contact.email_id }}
@@ -84,10 +97,10 @@ const isOwner = computed(() => props.contact.owner === session?.user)
       </span>
     </div>
 
-    <!-- Shared badge (visible, not on hover) -->
+    <!-- Shared badge -->
     <span
       v-if="isShared"
-      class="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
+      class="dock-person-shared items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
              bg-[var(--dock-accent)]/10 text-[var(--dock-accent)]"
       :title="__('Shared with team')"
     >
@@ -117,7 +130,7 @@ const isOwner = computed(() => props.contact.owner === session?.user)
         class="w-7 h-7 flex items-center justify-center rounded text-[var(--dock-icon)]
                hover:text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
         :title="__('Open calendar')"
-        @click.prevent="router.push('/calendar')"
+        @click.prevent="navigate('/calendar')"
       >
         <CalendarDays class="w-3.5 h-3.5" />
       </a>
@@ -137,3 +150,19 @@ const isOwner = computed(() => props.contact.owner === session?.user)
     </div>
   </div>
 </template>
+
+<style>
+/* Responsive display rules using plain CSS to avoid cross-bundle Tailwind cascade conflicts.
+   These classes are namespaced with dock-person- to prevent collisions. */
+.dock-person-meta { display: none; }
+.dock-person-shared { display: none; }
+.dock-person-app-badge { display: none; }
+
+@media (min-width: 768px) {
+  .dock-person-meta { display: flex; }
+}
+@media (min-width: 640px) {
+  .dock-person-shared { display: inline-flex; }
+  .dock-person-app-badge { display: inline-flex; }
+}
+</style>

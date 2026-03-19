@@ -8,7 +8,7 @@ import frappe
 def track(app: str, doctype: str, docname: str, label: str, icon: str = None) -> None:
     """
     Upsert a recent item for the current user.
-    Updates visited_at if a record for (user, app, doctype, docname) already exists.
+    Updates visited_at if a record for (user, app, ref_doctype, docname) already exists.
     Trims list to recent_items_limit after upsert.
     No-op when enable_recent_items is false.
     """
@@ -18,7 +18,7 @@ def track(app: str, doctype: str, docname: str, label: str, icon: str = None) ->
     user = frappe.session.user
     existing = frappe.db.get_value(
         "Dock Recent Item",
-        {"user": user, "app": app, "doctype": doctype, "docname": docname},
+        {"user": user, "app": app, "ref_doctype": doctype, "docname": docname},
         "name",
     )
 
@@ -30,16 +30,15 @@ def track(app: str, doctype: str, docname: str, label: str, icon: str = None) ->
             update_modified=False,
         )
     else:
-        frappe.get_doc({
-            "doctype": "Dock Recent Item",
-            "user": user,
-            "app": app,
-            "doctype": doctype,
-            "docname": docname,
-            "label": label,
-            "icon": icon or "",
-            "visited_at": frappe.utils.now(),
-        }).insert(ignore_permissions=True)
+        doc = frappe.new_doc("Dock Recent Item")
+        doc.user = user
+        doc.app = app
+        doc.ref_doctype = doctype
+        doc.docname = docname
+        doc.label = label
+        doc.icon = icon or ""
+        doc.visited_at = frappe.utils.now()
+        doc.insert(ignore_permissions=True)
 
     _trim_recent_items(user)
 
@@ -53,7 +52,7 @@ def get(limit: int = 20) -> list:
     return frappe.get_all(
         "Dock Recent Item",
         filters={"user": frappe.session.user},
-        fields=["name", "app", "doctype", "docname", "label", "icon", "visited_at"],
+        fields=["name", "app", "ref_doctype as doctype", "docname", "label", "icon", "visited_at"],
         order_by="visited_at desc",
         limit=int(limit),
     )

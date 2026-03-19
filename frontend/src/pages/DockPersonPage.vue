@@ -37,8 +37,9 @@ interface ContextPanel {
   fields?: { label: string; value: string }[]
 }
 
-const route   = useRoute()
-const router  = useRouter()
+let route: ReturnType<typeof useRoute> | undefined
+let router: ReturnType<typeof useRouter> | undefined
+try { route = useRoute(); router = useRouter() } catch { /* outside router context */ }
 
 const contact      = ref<Contact | null>(null)
 const panels       = ref<ContextPanel[]>([])
@@ -46,7 +47,12 @@ const loading      = ref(true)
 const hasError     = ref(false)
 const togglingShare = ref(false)
 
-const contactName = computed(() => route.params.name as string)
+const contactName = computed(() => {
+  if (route?.params?.name) return route.params.name as string
+  // Fallback: extract from URL path (e.g. /dock/people/CONT-00001)
+  const match = window.location.pathname.match(/\/people\/([^/]+)/)
+  return match?.[1] ?? ''
+})
 
 const session = (window as any).frappe?.session ?? (window as any).dockBoot?.session
 const isOwner = computed(() => contact.value?.owner === session?.user)
@@ -99,6 +105,14 @@ async function toggleShared() {
   }
 }
 
+function goBack() {
+  if (router) {
+    router.push({ name: 'dock-people' })
+  } else {
+    window.location.href = window.location.pathname.replace(/\/people\/.*$/, '/people')
+  }
+}
+
 onMounted(fetchContact)
 </script>
 
@@ -108,7 +122,7 @@ onMounted(fetchContact)
     <button
       class="flex items-center gap-1.5 text-sm text-[var(--dock-icon)] hover:text-[var(--dock-text)]
              transition-colors mb-6"
-      @click="router.push({ name: 'dock-people' })"
+      @click="goBack"
     >
       <ArrowLeft class="w-4 h-4" />
       {{ __('People') }}

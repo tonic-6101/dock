@@ -268,8 +268,16 @@ const ariaLabel = computed(() => {
       v-if="open"
       role="dialog"
       aria-label="Timer"
-      class="absolute right-0 top-full mt-2 w-72 bg-[var(--dock-bg)] border border-[var(--dock-border)]
-             rounded-lg shadow-lg z-20 overflow-hidden"
+      class="bg-[var(--dock-bg)] border border-[var(--dock-border)]
+             rounded-lg shadow-lg overflow-hidden"
+      :style="{
+        position: 'absolute',
+        right: '0',
+        top: '100%',
+        marginTop: '0.5rem',
+        width: '18rem',
+        zIndex: 9999,
+      }"
     >
       <DockTimerError v-if="hasError" @retry="hasError = false" />
       <template v-else>

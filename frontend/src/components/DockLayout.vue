@@ -24,7 +24,7 @@ import DockNavbar from './DockNavbar.vue'
 </script>
 
 <template>
-  <div class="dock-layout flex flex-col h-screen overflow-hidden transition-colors">
+  <div class="dock-layout flex flex-col h-screen transition-colors">
     <DockNavbar />
     <div class="flex flex-1 min-w-0 overflow-hidden">
       <slot />

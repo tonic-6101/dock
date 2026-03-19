@@ -98,12 +98,12 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  document.addEventListener('click', onClickOutside)
+  document.addEventListener('mousedown', onClickOutside)
   document.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', onClickOutside)
+  document.removeEventListener('mousedown', onClickOutside)
   document.removeEventListener('keydown', onKeydown)
 })
 </script>
@@ -120,7 +120,7 @@ onUnmounted(() => {
       aria-haspopup="true"
       :aria-label="__('User menu')"
       :title="fullName || __('User menu')"
-      @click="toggle"
+      @click.stop="toggle"
     >
       <img
         v-if="session?.user_image"
@@ -143,8 +143,16 @@ onUnmounted(() => {
     >
       <div
         v-if="open"
-        class="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg border border-[var(--dock-border)]
-               bg-[var(--dock-bg)] py-1 z-20"
+        class="rounded-lg shadow-lg border border-[var(--dock-border)]
+               bg-[var(--dock-bg)] py-1"
+        :style="{
+          position: 'absolute',
+          right: '0',
+          top: '100%',
+          marginTop: '0.5rem',
+          width: '14rem',
+          zIndex: 9999,
+        }"
         role="menu"
       >
         <!-- § 1 — Identity header -->

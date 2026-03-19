@@ -6,11 +6,9 @@
   Only rendered inside /dock/* — never injected into domain apps.
 
   Shows three sections:
-    1. Dock settings (General, Notifications)
+    1. Dock settings (General, Notifications, Calendar, People)
     2. App settings (dynamic — from dock_settings_sections hooks)
     3. Admin pages (Guest Portal, Ecosystem Apps — System Manager only)
-
-  Calendar and People are top bar icons (shared pages) — not sidebar items.
 
   Follows ecosystem.localhost/spec/design/ui-specs/sidebar-nav.md
   Spec: dock.localhost/spec/features/sidebar-nav.md (revised 2026-03-19)
@@ -23,7 +21,7 @@ export default { name: 'DockSidebar' }
 import { computed, type Component } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Settings, Bell, Link, LayoutGrid,
+  Settings, Bell, CalendarDays, Users, Link, LayoutGrid,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useSidebar } from '@/composables/useSidebar'
@@ -60,6 +58,8 @@ const isSystemManager = computed(() => {
 const dockSettingsItems = computed<NavItem[]>(() => [
   { path: '/settings',               name: __('General'),       icon: Settings },
   { path: '/settings/notifications', name: __('Notifications'), icon: Bell },
+  { path: '/settings/calendar',     name: __('Calendar'),      icon: CalendarDays },
+  { path: '/settings/people',       name: __('People'),        icon: Users },
 ])
 
 // Section 2: App settings (dynamic — from dock_settings_sections hooks)

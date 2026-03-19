@@ -90,7 +90,7 @@ function handleClose() {
       :aria-expanded="open"
       :aria-label="unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'"
       title="Notifications"
-      @click="toggle"
+      @click.stop="toggle"
     >
       <Bell class="w-4 h-4" />
       <span

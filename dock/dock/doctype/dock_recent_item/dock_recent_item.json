@@ -8,7 +8,7 @@
  "field_order": [
   "user",
   "app",
-  "doctype",
+  "ref_doctype",
   "docname",
   "label",
   "icon",
@@ -31,7 +31,7 @@
    "description": "Source app (e.g. orga)"
   },
   {
-   "fieldname": "doctype",
+   "fieldname": "ref_doctype",
    "fieldtype": "Data",
    "label": "DocType",
    "reqd": 1,

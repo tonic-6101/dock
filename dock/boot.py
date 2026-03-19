@@ -162,7 +162,7 @@ def _get_recent_items(settings):
     return frappe.get_all(
         "Dock Recent Item",
         filters={"user": frappe.session.user},
-        fields=["name", "app", "doctype", "docname", "label", "icon", "visited_at"],
+        fields=["name", "app", "ref_doctype as doctype", "docname", "label", "icon", "visited_at"],
         order_by="visited_at desc",
         limit=8,
     )

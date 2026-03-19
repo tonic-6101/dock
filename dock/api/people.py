@@ -2,7 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
-from frappe.query_builder import DocType
+from frappe.query_builder import DocType, Order
 from frappe.query_builder.functions import Count
 
 
@@ -60,7 +60,11 @@ def get_list(
         total = total_row[0].get("total", 0) if total_row else 0
 
         # Paged items
-        order_field = Contact.full_name.asc() if sort == "name" else Contact.modified.desc()
+        if sort == "name":
+            order_field, order_dir = Contact.full_name, Order.asc
+        else:
+            order_field, order_dir = Contact.modified, Order.desc
+
         items = (
             frappe.qb.from_(Contact)
             .select(
@@ -74,7 +78,7 @@ def get_list(
                 Contact.owner,
             )
             .where(where_cond)
-            .orderby(order_field)
+            .orderby(order_field, order=order_dir)
             .limit(int(limit))
             .offset(int(offset))
             .run(as_dict=True)
@@ -123,7 +127,7 @@ def get_contact(contact_name: str) -> dict:
         "designation": doc.designation,
         "image": doc.image,
         "email_ids": [{"email": e.email_id, "is_primary": e.is_primary} for e in doc.email_ids],
-        "phone_nos": [{"phone": p.phone, "is_primary": p.is_primary} for p in doc.phone_nos],
+        "phone_nos": [{"phone": p.phone, "is_primary": p.is_primary_phone} for p in doc.phone_nos],
         "dock_shared": bool(doc.dock_shared),
         "owner": doc.owner,
     }

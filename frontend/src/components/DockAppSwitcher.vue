@@ -8,7 +8,7 @@ export default { name: 'DockAppSwitcher' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Grip, Users } from 'lucide-vue-next'
+import { Grip } from 'lucide-vue-next'
 import { useDockBoot } from '@/composables/useDockBoot'
 import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 import { __ } from '@/composables/useTranslate'
@@ -45,8 +45,6 @@ const appRows = computed(() => {
 function isActive(app: App): boolean {
   return currentPath.value.startsWith(app.route)
 }
-
-function navigateToPeople() { close(); window.location.href = '/dock/people' }
 
 function navigateTo(app: App) {
   document.documentElement.style.setProperty('--dock-accent', app.color)
@@ -91,13 +89,16 @@ function onPopstate() {
 }
 
 onMounted(() => {
-  document.addEventListener('click', onClickOutside)
+  // Use mousedown (not click) for outside detection to avoid race with the
+  // button's @click handler — mousedown fires before click, so the dropdown
+  // is already closed by the time the button's click would re-open it.
+  document.addEventListener('mousedown', onClickOutside)
   document.addEventListener('keydown', onKeydown)
   window.addEventListener('popstate', onPopstate)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', onClickOutside)
+  document.removeEventListener('mousedown', onClickOutside)
   document.removeEventListener('keydown', onKeydown)
   window.removeEventListener('popstate', onPopstate)
 })
@@ -114,7 +115,7 @@ onUnmounted(() => {
       aria-haspopup="true"
       :aria-label="__('Open app switcher')"
       :title="__('App switcher')"
-      @click="toggle"
+      @click.stop="toggle"
     >
       <Grip class="w-4 h-4" />
     </button>
@@ -129,18 +130,23 @@ onUnmounted(() => {
       />
     </Transition>
 
-    <!-- Panel: bottom sheet on mobile, popover on desktop -->
-    <Transition name="dock-switcher">
-      <div
-        v-if="open"
-        role="dialog"
-        aria-label="App switcher"
-        class="fixed inset-x-0 bottom-0 rounded-t-2xl z-40
-               sm:absolute sm:inset-x-auto sm:right-0 sm:bottom-auto sm:top-full sm:mt-2
-               sm:w-72 sm:rounded-lg sm:z-20
-               max-h-[420px] overflow-y-auto
-               bg-[var(--dock-bg)] border border-[var(--dock-border)] shadow-lg p-3"
-      >
+    <!-- Panel: inline styles for positioning to prevent cross-bundle Tailwind cascade conflicts -->
+    <div
+      v-if="open"
+      role="dialog"
+      aria-label="App switcher"
+      class="dock-switcher-panel max-h-[420px] overflow-y-auto
+             bg-[var(--dock-bg)] border border-[var(--dock-border)] shadow-lg p-3"
+      :style="{
+        position: 'absolute',
+        right: '0',
+        top: '100%',
+        marginTop: '0.5rem',
+        width: '18rem',
+        borderRadius: '0.5rem',
+        zIndex: 9999,
+      }"
+    >
         <!-- Mobile drag handle -->
         <div class="flex justify-center mb-3 sm:hidden">
           <div class="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
@@ -152,7 +158,7 @@ onUnmounted(() => {
         <!-- Pinned bookmarks (hidden when empty) -->
         <DockBookmarks @close="close" />
 
-        <!-- App grid: hardcoded Dock-native entries + registered domain apps -->
+        <!-- App grid: registered domain apps -->
         <div
           ref="gridRef"
           role="grid"
@@ -160,29 +166,6 @@ onUnmounted(() => {
           class="grid grid-cols-3 gap-2 mb-3"
           @keydown="onGridKeydown"
         >
-          <!-- Hardcoded: People (Dock-native, always visible) -->
-          <div role="row" class="contents">
-          <a
-            href="/dock/people"
-            role="gridcell"
-            tabindex="0"
-            :aria-label="__('People')"
-            :aria-current="currentPath.startsWith('/dock/people') ? 'true' : undefined"
-            class="flex flex-col items-center gap-1.5 p-2 rounded-lg text-center
-                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors
-                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dock-accent)] focus-visible:ring-offset-1"
-            :class="{ 'ring-2 ring-[var(--dock-accent)]': currentPath.startsWith('/dock/people') }"
-            @click.prevent="navigateToPeople"
-          >
-            <span class="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-500/10 flex-shrink-0">
-              <Users class="w-6 h-6 text-indigo-500" />
-            </span>
-            <span class="text-xs text-[var(--dock-text)] truncate w-full leading-tight">
-              {{ __('People') }}
-            </span>
-          </a>
-          </div>
-
           <!-- Dynamic: registered domain apps -->
           <template v-for="(row, ri) in appRows" :key="ri">
             <div role="row" class="contents">
@@ -249,7 +232,6 @@ onUnmounted(() => {
           </a>
         </div>
       </div>
-    </Transition>
   </div>
 </template>
 

@@ -108,8 +108,16 @@ function navigate(n: Notification) {
 
 <template>
   <div
-    class="absolute right-0 top-full mt-2 w-80 bg-[var(--dock-bg)] border border-[var(--dock-border)]
-           rounded-lg shadow-lg z-20 overflow-hidden"
+    class="bg-[var(--dock-bg)] border border-[var(--dock-border)]
+           rounded-lg shadow-lg overflow-hidden"
+    :style="{
+      position: 'absolute',
+      right: '0',
+      top: '100%',
+      marginTop: '0.5rem',
+      width: '20rem',
+      zIndex: 9999,
+    }"
     role="menu"
     aria-label="Notifications"
   >
