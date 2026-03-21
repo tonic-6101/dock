@@ -59,7 +59,9 @@ async function validateAndLoad() {
       return
     }
 
-    viewUrl.value = view.route.replace('{name}', encodeURIComponent(data.source_name))
+    const resolvedRoute = view.route.replace('{name}', encodeURIComponent(data.source_name))
+    const sep = resolvedRoute.includes('?') ? '&' : '?'
+    viewUrl.value = `${resolvedRoute}${sep}token=${encodeURIComponent(token.value)}`
     state.value = 'valid'
 
     // Log activity on successful load

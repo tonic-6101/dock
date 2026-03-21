@@ -41,6 +41,8 @@ def extend_bootinfo(bootinfo):
         "guest_views": _get_guest_views(),
         # Settings sections — collected from dock_settings_sections hooks; drives sidebar
         "settings_sections": _get_settings_sections(),
+        # Bridges — collected from dock_bridges hooks; drives Integrations dashboard
+        "bridges": _get_bridges(),
     }
 
 
@@ -71,6 +73,7 @@ def get_boot():
         "search_sections": _get_search_sections(),
         "guest_views": _get_guest_views(),
         "settings_sections": _get_settings_sections(),
+        "bridges": _get_bridges(),
     }
 
 
@@ -295,3 +298,54 @@ def _get_search_sections():
         if sections:
             result[app] = sections
     return result
+
+
+_REQUIRED_BRIDGE_FIELDS = {"label", "target_app", "source_doctype", "direction"}
+
+
+def _get_bridges():
+    """
+    Collects dock_bridges from all installed apps.
+    Each app declares its Frappe/ERPNext integration bridges — Dock renders
+    them in the Integrations dashboard and proxies status/sync calls.
+
+    Shape: [{
+        "app": "watch",
+        "label": "ERPNext Timesheet Sync",
+        "target_app": "erpnext",
+        "target_doctype": "Timesheet",
+        "source_doctype": "Watch Entry",
+        "direction": "one_way",          # one_way | two_way
+        "target_installed": True,
+        "status_endpoint": "watch.api.erpnext_bridge.get_sync_status",
+        "sync_endpoint": "watch.api.erpnext_bridge.bulk_sync",
+        "settings_route": "/watch/settings#erpnext",
+    }, ...]
+    """
+    installed_apps = frappe.get_installed_apps()
+    bridges = []
+    for app in installed_apps:
+        for decl in frappe.get_hooks("dock_bridges", app_name=app):
+            items = decl if isinstance(decl, list) else [decl]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                # Unwrap single-item list values (Frappe normalizes hook values to lists)
+                unwrapped = {
+                    k: v[0] if isinstance(v, list) and len(v) == 1 else v
+                    for k, v in item.items()
+                }
+                missing = _REQUIRED_BRIDGE_FIELDS - set(unwrapped.keys())
+                if missing:
+                    frappe.log_error(
+                        f"dock: {app} dock_bridges entry missing required fields: {missing}",
+                        "Dock Hook Validation",
+                    )
+                    continue
+                target_installed = unwrapped["target_app"] in installed_apps
+                bridges.append({
+                    "app": app,
+                    "target_installed": target_installed,
+                    **unwrapped,
+                })
+    return bridges

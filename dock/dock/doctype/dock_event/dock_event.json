@@ -13,12 +13,17 @@
   "event_type",
   "color",
   "status",
+  "organizer",
   "section_details",
   "location",
   "meeting_url",
   "description",
   "section_attendees",
   "attendees",
+  "section_reminder",
+  "send_reminder",
+  "reminder_minutes",
+  "reminder_sent",
   "section_source",
   "source_app",
   "source_doctype",
@@ -72,6 +77,14 @@
    "default": "Scheduled"
   },
   {
+   "fieldname": "organizer",
+   "fieldtype": "Link",
+   "label": "Organizer",
+   "options": "User",
+   "read_only": 1,
+   "description": "User who created the event (distinct from per-attendee user field)"
+  },
+  {
    "fieldname": "section_details",
    "fieldtype": "Section Break",
    "label": "Details"
@@ -103,6 +116,33 @@
    "fieldtype": "Table",
    "label": "Attendees",
    "options": "Dock Event Attendee"
+  },
+  {
+   "fieldname": "section_reminder",
+   "fieldtype": "Section Break",
+   "label": "Reminder"
+  },
+  {
+   "fieldname": "send_reminder",
+   "fieldtype": "Check",
+   "label": "Send Reminder",
+   "default": "0"
+  },
+  {
+   "fieldname": "reminder_minutes",
+   "fieldtype": "Int",
+   "label": "Minutes Before",
+   "default": "60",
+   "depends_on": "eval:doc.send_reminder",
+   "description": "Send reminder this many minutes before the event"
+  },
+  {
+   "fieldname": "reminder_sent",
+   "fieldtype": "Check",
+   "label": "Reminder Sent",
+   "default": "0",
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "section_source",
@@ -149,7 +189,7 @@
   }
  ],
  "links": [],
- "modified": "2026-03-19 00:00:00.000000",
+ "modified": "2026-03-20 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Dock",
  "name": "Dock Event",

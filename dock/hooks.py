@@ -40,6 +40,7 @@ permission_query_conditions = {
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.get_permission_query_conditions",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.get_permission_query_conditions",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.get_permission_query_conditions",
+    "Dock Sync Log":       "dock.dock.doctype.dock_sync_log.dock_sync_log.get_permission_query_conditions",
 }
 
 # Document-level permission checks (single record access)
@@ -51,13 +52,21 @@ has_permission = {
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.has_permission",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.has_permission",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.has_permission",
+    "Dock Sync Log":       "dock.dock.doctype.dock_sync_log.dock_sync_log.has_permission",
 }
 
-# Scheduled cleanup: remove old read notifications beyond retention window
+# Scheduled tasks
 scheduler_events = {
     "daily": [
         "dock.tasks.cleanup_old_notifications",
+        "dock.dock.doctype.dock_sync_log.dock_sync_log.cleanup_old_sync_logs",
     ],
+    "cron": {
+        # Send event reminders every 15 minutes
+        "*/15 * * * *": [
+            "dock.scheduled_jobs.send_event_reminders.send_event_reminders",
+        ],
+    },
 }
 
 # Ship Dock custom fields on Frappe Contact

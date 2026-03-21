@@ -18,7 +18,8 @@
 // Layout components
 export { default as DockNavbar }      from './components/DockNavbar.vue'
 export { default as DockLayout }      from './components/DockLayout.vue'
-export { default as DockShareButton } from './components/share/DockShareButton.vue'
+export { default as DockShareButton }      from './components/share/DockShareButton.vue'
+export { default as DockGuestShareButton } from './components/guest/DockGuestShareButton.vue'
 
 // Shared page route helper (lazy-loaded — zero initial bundle cost)
 export { dockSharedRoutes } from './shared-routes'

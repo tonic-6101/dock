@@ -1,0 +1,160 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-03-20 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "app",
+  "direction_indicator",
+  "target_app",
+  "column_break_source",
+  "source_doctype",
+  "source_name",
+  "column_break_target",
+  "target_doctype",
+  "target_name",
+  "section_status",
+  "status",
+  "synced_by",
+  "column_break_error",
+  "error_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "app",
+   "fieldtype": "Data",
+   "label": "App",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "description": "Source app that performed the sync (e.g. watch, orga)"
+  },
+  {
+   "fieldname": "direction_indicator",
+   "fieldtype": "HTML",
+   "label": "",
+   "options": "<div style='text-align:center;font-size:1.2em;color:var(--text-muted)'>→</div>"
+  },
+  {
+   "fieldname": "target_app",
+   "fieldtype": "Data",
+   "label": "Target App",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "description": "Target app that received the data (e.g. erpnext, frappe)"
+  },
+  {
+   "fieldname": "column_break_source",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Data",
+   "label": "Source DocType",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Data",
+   "label": "Source Name",
+   "read_only": 1,
+   "description": "Specific record that was synced (optional for bulk syncs)"
+  },
+  {
+   "fieldname": "column_break_target",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "target_doctype",
+   "fieldtype": "Data",
+   "label": "Target DocType",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_name",
+   "fieldtype": "Data",
+   "label": "Target Name",
+   "read_only": 1,
+   "description": "Created or updated record in the target app"
+  },
+  {
+   "fieldname": "section_status",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Synced\nFailed\nPending",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "default": "Synced"
+  },
+  {
+   "fieldname": "synced_by",
+   "fieldtype": "Link",
+   "label": "Synced By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_error",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message",
+   "read_only": 1,
+   "description": "Error details when status is Failed"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Sync Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 0
+  },
+  {
+   "create": 0,
+   "delete": 1,
+   "email": 0,
+   "export": 1,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "Dock Manager",
+   "share": 0,
+   "write": 0
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

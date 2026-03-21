@@ -80,6 +80,11 @@ const router = createRouter({
 
     // ── Admin pages (sidebar — System Manager only) ───────────────────
     {
+      path: '/integrations',
+      name: 'dock-integrations',
+      component: () => import('@/pages/DockIntegrationsPage.vue'),
+    },
+    {
       path: '/apps',
       name: 'dock-apps',
       component: () => import('@/pages/DockEcosystemAppsPage.vue'),

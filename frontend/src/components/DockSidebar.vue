@@ -21,7 +21,7 @@ export default { name: 'DockSidebar' }
 import { computed, type Component } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Settings, Bell, CalendarDays, Users, Link, LayoutGrid,
+  Settings, Bell, CalendarDays, Users, Link, LayoutGrid, Cable,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useSidebar } from '@/composables/useSidebar'
@@ -77,8 +77,9 @@ const appSettingsItems = computed<NavItem[]>(() => {
 const adminItems = computed<NavItem[]>(() => {
   if (!isSystemManager.value) return []
   return [
-    { path: '/guest', name: __('Guest Portal'),    icon: Link as Component },
-    { path: '/apps',  name: __('Ecosystem Apps'),   icon: LayoutGrid as Component },
+    { path: '/integrations', name: __('Integrations'),  icon: Cable as Component },
+    { path: '/guest',        name: __('Guest Portal'),  icon: Link as Component },
+    { path: '/apps',         name: __('Ecosystem Apps'), icon: LayoutGrid as Component },
   ]
 })
 
@@ -179,7 +180,7 @@ const iconClasses = (item: NavItem): string => [
       <!-- Edition + version (expanded) -->
       <div v-if="!collapsed" class="px-4 pb-2">
         <div class="text-sm font-semibold text-white/80">{{ __('Community Edition') }}</div>
-        <div class="text-xs text-dock-200">v0.2.0</div>
+        <div class="text-xs text-dock-200">v{{ dock?.version ?? '—' }}</div>
       </div>
 
       <!-- Links -->

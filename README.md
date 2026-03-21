@@ -2,7 +2,7 @@
 
 **Coordination Layer for Tonic's Ecosystem**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/tonic-6101/dock/releases)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/tonic-6101/dock/releases)
 [![Frappe](https://img.shields.io/badge/frappe-v15+-green.svg)](https://frappeframework.com)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-orange.svg)](license.txt)
 

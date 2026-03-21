@@ -23,6 +23,7 @@
   "privacy_policy_url",
   "section_advanced",
   "frappe_manager_url",
+  "sync_log_retention_days",
   "app_order"
  ],
  "fields": [
@@ -136,6 +137,13 @@
    "label": "Frappe Manager URL",
    "permlevel": 1,
    "description": "Base URL of Frappe Manager API (e.g. http://localhost:8000). When empty, one-click app management is replaced with CLI instructions."
+  },
+  {
+   "fieldname": "sync_log_retention_days",
+   "fieldtype": "Int",
+   "label": "Sync Log Retention (days)",
+   "default": "90",
+   "description": "Days to keep Dock Sync Log entries before scheduled cleanup. 0 = keep forever."
   },
   {
    "fieldname": "app_order",

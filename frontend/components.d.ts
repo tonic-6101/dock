@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    BridgeCard: typeof import('./src/components/integrations/BridgeCard.vue')['default']
     DockAppLabel: typeof import('./src/components/DockAppLabel.vue')['default']
     DockAppSwitcher: typeof import('./src/components/DockAppSwitcher.vue')['default']
     DockAvatar: typeof import('./src/components/DockAvatar.vue')['default']
