@@ -2,6 +2,7 @@
 // Copyright (C) 2024-2026 Tonic
 
 import { ref, watch, type Ref } from 'vue'
+import { _registerDropdownCloseHandler, _onDropdownOpened } from './useDockPanels'
 
 /**
  * Shared dropdown mutual-exclusion state.
@@ -10,11 +11,19 @@ import { ref, watch, type Ref } from 'vue'
  *
  * Also handles focus return (WCAG 2.4.3): when a dropdown closes,
  * focus returns to the trigger element that opened it.
+ *
+ * Integrates with useDockPanels: opening a dropdown closes any open panel,
+ * and opening a panel closes any open dropdown.
  */
 
 type DropdownId = string
 
 const activeDropdown = ref<DropdownId | null>(null)
+
+// Register close-all handler so panels can close dropdowns
+_registerDropdownCloseHandler(() => {
+  activeDropdown.value = null
+})
 
 export function useDropdownExclusion(
   id: DropdownId,
@@ -26,6 +35,8 @@ export function useDropdownExclusion(
     if (value) {
       activeDropdown.value = id
       open.value = true
+      // Close any open panel
+      _onDropdownOpened()
     } else if (open.value) {
       open.value = false
       if (activeDropdown.value === id) activeDropdown.value = null

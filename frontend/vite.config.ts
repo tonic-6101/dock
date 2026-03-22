@@ -79,6 +79,39 @@ function deskBundleLoader(): Plugin {
   }
 }
 
+// Plugin: inject CSS into async JS chunks so they're self-contained.
+// Vite extracts scoped CSS into separate .css files, but with modulePreload:false
+// the async chunks never load them. This plugin inlines each chunk's CSS
+// as a <style> injection at the top of the JS, guaranteeing styles load
+// in any context (ESM imports from domain apps, SPA, Desk).
+function cssInjectedByJs(): Plugin {
+  return {
+    name: 'css-injected-by-js',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      // Collect CSS assets keyed by base name (e.g. "DockTimerPanel" → css source)
+      const cssByName = new Map<string, string>()
+      for (const [fileName, asset] of Object.entries(bundle)) {
+        if (asset.type === 'asset' && fileName.endsWith('.css')) {
+          // assets/DockTimerPanel.css → DockTimerPanel
+          const base = fileName.replace(/^assets\//, '').replace(/\.css$/, '')
+          cssByName.set(base, asset.source as string)
+        }
+      }
+
+      // For each async chunk, find matching CSS and inject it
+      for (const [fileName, chunk] of Object.entries(bundle)) {
+        if (chunk.type !== 'chunk' || chunk.isEntry) continue
+        const css = cssByName.get(chunk.name)
+        if (!css) continue
+        const escaped = JSON.stringify(css)
+        const injection = `;(function(){try{var d=document,s=d.createElement("style");s.dataset.viteChunk=${JSON.stringify(chunk.name)};s.textContent=${escaped};d.head.appendChild(s)}catch(e){}})();\n`
+        chunk.code = injection + chunk.code
+      }
+    },
+  }
+}
+
 // Plugin: copy tokens.css as a standalone file to dock/public/css/dock-tokens.css.
 // Domain apps load this via <link> tag — single source of truth for --dock-* properties.
 function copyTokensCss(): Plugin {
@@ -160,6 +193,7 @@ export default defineConfig({
       jinjaBootData: true,
     }),
     copyVueRuntime(),
+    cssInjectedByJs(),
     copyTokensCss(),
     deskBundleLoader(),
     buildNavbarCss(),

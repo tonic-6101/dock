@@ -4,8 +4,9 @@
 
   DockLayout — wrapper component for domain apps.
 
-  Provides the DockNavbar + full-height layout shell. Domain apps wrap their
-  root template in <DockLayout> and never think about the top bar again.
+  Provides the DockNavbar + full-height layout shell + contextual panels.
+  Domain apps wrap their root template in <DockLayout> and never think
+  about the top bar or panel system again.
 
   Usage (in any domain app's App.vue):
 
@@ -20,7 +21,14 @@ export default { name: 'DockLayout' }
 </script>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import { useDockPanels } from '@/composables/useDockPanels'
 import DockNavbar from './DockNavbar.vue'
+
+const DockPanelBackdrop = defineAsyncComponent(() => import('./DockPanelBackdrop.vue'))
+const DockTimerPanel = defineAsyncComponent(() => import('./DockTimerPanel.vue'))
+
+const { activePanel, closePanel } = useDockPanels()
 </script>
 
 <template>
@@ -28,6 +36,10 @@ import DockNavbar from './DockNavbar.vue'
     <DockNavbar />
     <div class="flex flex-1 min-w-0 overflow-hidden">
       <slot />
+
+      <!-- Contextual panel overlay -->
+      <DockPanelBackdrop v-if="activePanel" @close="closePanel" />
+      <DockTimerPanel v-if="activePanel === 'timer'" />
     </div>
   </div>
 </template>

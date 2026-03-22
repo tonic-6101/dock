@@ -118,8 +118,7 @@ const janaInstalled = (window as any).frappe?.boot?.installed_apps?.includes('ja
 const DockSidebarToggle   = defineAsyncComponent(() => import('./DockSidebarToggle.vue'))
 const DockAppLabel        = defineAsyncComponent(() => import('./DockAppLabel.vue'))
 const DockSearch          = defineAsyncComponent(() => import('./DockSearch.vue'))
-const DockTimer           = defineAsyncComponent(() => import('./DockTimer.vue'))
-const DockTimerStaleWarning = defineAsyncComponent(() => import('./DockTimerStaleWarning.vue'))
+const DockTimerButton     = defineAsyncComponent(() => import('./DockTimerButton.vue'))
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
 const DockNotesIcon       = defineAsyncComponent(() => import('./DockNotesIcon.vue'))
@@ -153,7 +152,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
     <!-- Right: action cluster -->
     <div class="flex items-center gap-1 flex-shrink-0">
       <DockPinButton :current-path="currentPath" />
-      <DockTimer />
+      <DockTimerButton />
       <DockCalendarIcon />
       <DockPeopleIcon />
       <DockNotesIcon />
@@ -163,7 +162,4 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
       <DockAvatar />
     </div>
   </header>
-
-  <!-- Stale timer warning — full-width banner below the top bar, only when needed -->
-  <DockTimerStaleWarning v-if="!crashed" />
 </template>

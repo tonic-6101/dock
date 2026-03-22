@@ -804,3 +804,30 @@ def search_users(query: str = "", limit: int = 8) -> list:
     )
 
     return q.run(as_dict=True)
+
+
+@frappe.whitelist()
+def search_contacts(query: str = "", limit: int = 8) -> list:
+    """
+    Search Frappe Contacts by first name, last name, full name, or email.
+    Used by the timer contact picker.
+    Returns [{name, full_name, email_id, image}].
+    """
+    if not query or len(query) < 1:
+        return []
+
+    C = DocType("Contact")
+    q = (
+        frappe.qb.from_(C)
+        .select(C.name, C.full_name, C.first_name, C.last_name, C.email_id, C.image)
+        .where(
+            (C.first_name.like(f"%{query}%"))
+            | (C.last_name.like(f"%{query}%"))
+            | (C.full_name.like(f"%{query}%"))
+            | (C.email_id.like(f"%{query}%"))
+        )
+        .orderby(C.full_name)
+        .limit(int(limit))
+    )
+
+    return q.run(as_dict=True)

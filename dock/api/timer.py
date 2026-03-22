@@ -36,6 +36,12 @@ def _get_watch_state() -> dict:
         "entry_name": entry_name,
         "entry_type": None,
         "tags": [],
+        # Context fields from Watch
+        "contact": raw.get("contact"),
+        "contact_name": raw.get("contact_name"),
+        "context_type": raw.get("context_type"),
+        "context_name": raw.get("context_name"),
+        "context_display": raw.get("context_display"),
     }
 
     # Fetch tags and entry_type from the active time entry
@@ -58,30 +64,35 @@ def get_state() -> dict:
 
 @frappe.whitelist()
 def start(
-    context_app: str = None,
-    context_doctype: str = None,
-    context_name: str = None,
     context_label: str = None,
+    description: str = None,
     tags: str = None,
     entry_type: str = None,
+    contact: str = None,
+    context_type: str = None,
+    context_name: str = None,
+    # Legacy params — accepted for backward compat, no longer enriched by Dock
+    context_app: str = None,
+    context_doctype: str = None,
 ) -> dict:
     """Start the timer. Proxies watch.api.timer.start_timer."""
     if not _watch_installed():
         return _UNAVAILABLE
 
-    kwargs: dict = {"description": context_label}
+    desc = description or context_label
+    kwargs: dict = {"description": desc}
     if tags:
         kwargs["tags"] = tags
     if entry_type:
         kwargs["entry_type"] = entry_type
+    if contact:
+        kwargs["contact"] = contact
+    if context_type:
+        kwargs["context_type"] = context_type
+    if context_name:
+        kwargs["context_name"] = context_name
     frappe.call("watch.api.timer.start_timer", **kwargs)
     state = _get_watch_state()
-    state.update({
-        "context_app": context_app,
-        "context_doctype": context_doctype,
-        "context_name": context_name,
-        "context_label": context_label,
-    })
     _push_realtime(state)
     return state
 
@@ -128,29 +139,134 @@ def stop(notes: str = None) -> dict:
 
 @frappe.whitelist()
 def update_context(
-    context_app: str = None,
-    context_doctype: str = None,
-    context_name: str = None,
     context_label: str = None,
+    description: str = None,
     tags: str = None,
     entry_type: str = None,
+    contact: str = None,
+    context_type: str = None,
+    context_name: str = None,
+    # Legacy params — accepted for backward compat
+    context_app: str = None,
+    context_doctype: str = None,
 ) -> dict:
     """Update context of a running/paused timer."""
     if not _watch_installed():
         return _UNAVAILABLE
 
-    kwargs: dict = {"description": context_label}
+    desc = description or context_label
+    kwargs: dict = {}
+    if desc is not None:
+        kwargs["description"] = desc
     if tags:
         kwargs["tags"] = tags
     if entry_type:
         kwargs["entry_type"] = entry_type
+    if contact is not None:
+        kwargs["contact"] = contact
+    if context_type is not None:
+        kwargs["context_type"] = context_type
+    if context_name is not None:
+        kwargs["context_name"] = context_name
     frappe.call("watch.api.timer.update_timer", **kwargs)
     state = _get_watch_state()
-    state.update({
-        "context_app": context_app,
-        "context_doctype": context_doctype,
-        "context_name": context_name,
-        "context_label": context_label,
-    })
     _push_realtime(state)
     return state
+
+
+@frappe.whitelist()
+def get_daily_summary(date: str = None) -> dict:
+    """Proxy to watch.api.time_entry.get_daily_summary."""
+    if not _watch_installed():
+        return {"entries": [], "total_hours": 0, "billable_hours": 0}
+
+    if not date:
+        from datetime import date as dt_date
+        date = dt_date.today().isoformat()
+
+    return frappe.call("watch.api.time_entry.get_daily_summary", date=date)
+
+
+@frappe.whitelist()
+def start_focus(
+    description: str = None,
+    tags: str = None,
+    entry_type: str = "billable",
+    sessions: int = 4,
+    work_minutes: int = 25,
+    break_minutes: int = 5,
+    contact: str = None,
+    context_type: str = None,
+    context_name: str = None,
+) -> dict:
+    """Start a Pomodoro focus session. Proxies watch.api.timer.start_focus."""
+    if not _watch_installed():
+        return _UNAVAILABLE
+
+    kwargs: dict = {}
+    if description:
+        kwargs["description"] = description
+    if tags:
+        kwargs["tags"] = tags
+    if entry_type:
+        kwargs["entry_type"] = entry_type
+    kwargs["sessions"] = sessions
+    kwargs["work_minutes"] = work_minutes
+    kwargs["break_minutes"] = break_minutes
+    if contact:
+        kwargs["contact"] = contact
+    if context_type:
+        kwargs["context_type"] = context_type
+    if context_name:
+        kwargs["context_name"] = context_name
+    frappe.call("watch.api.timer.start_focus", **kwargs)
+    state = _get_watch_state()
+    _push_realtime(state)
+    return state
+
+
+@frappe.whitelist()
+def get_context_options() -> list[dict]:
+    """Returns available timer context types from Watch."""
+    if not _watch_installed():
+        return []
+    return frappe.call("watch.api.timer.get_context_options")
+
+
+@frappe.whitelist()
+def search_context(doctype: str, query: str, limit: int = 8) -> list[dict]:
+    """Search for context records by doctype.
+
+    Uses the context options from Watch to determine which fields to search
+    and display. Runs server-side to avoid frappe.client.get_list field
+    permission issues.
+    """
+    if not _watch_installed():
+        return []
+
+    options = frappe.call("watch.api.timer.get_context_options")
+    opt = next((o for o in options if o["doctype"] == doctype), None)
+    if not opt:
+        return []
+
+    if not frappe.has_permission(doctype, "read"):
+        return []
+
+    search_field = opt["search_fields"][0] if opt.get("search_fields") else "name"
+    display_field = opt.get("display_field") or "name"
+
+    fields = ["name"]
+    if display_field != "name":
+        fields.append(display_field)
+
+    results = frappe.get_list(
+        doctype,
+        filters={search_field: ["like", f"%{query}%"]},
+        fields=fields,
+        limit_page_length=limit,
+    )
+
+    return [
+        {"name": r.name, "display": r.get(display_field) or r.name}
+        for r in results
+    ]

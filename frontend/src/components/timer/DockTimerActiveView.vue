@@ -7,18 +7,19 @@ export default { name: 'DockTimerActiveView' }
 </script>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { __ } from '@/composables/useTranslate'
-
-interface TimerState {
-  state: 'running' | 'paused'
-  elapsed_seconds: number
-  context_label?: string
-  context_doctype?: string
-  context_name?: string
-}
+import type { TimerState } from '@/composables/useDockTimer'
 
 const props = defineProps<{ state: TimerState; display: string; loading?: boolean }>()
 const emit  = defineEmits<{ pause: []; resume: []; stop: []; edit: [] }>()
+
+const contextLine = computed(() => {
+  const parts: string[] = []
+  if (props.state.contact_name) parts.push(props.state.contact_name)
+  if (props.state.context_display) parts.push(props.state.context_display)
+  return parts.join(' · ')
+})
 </script>
 
 <template>
@@ -37,10 +38,14 @@ const emit  = defineEmits<{ pause: []; resume: []; stop: []; edit: [] }>()
       <span v-if="state.state === 'paused'" class="text-xs text-[var(--dock-icon)]">({{ __('paused') }})</span>
     </div>
 
-    <!-- Context -->
+    <!-- Description -->
     <div v-if="state.context_label" class="text-xs text-[var(--dock-text)] truncate">
       {{ state.context_label }}
-      <span v-if="state.context_doctype" class="text-[var(--dock-icon)]"> · {{ state.context_doctype }}</span>
+    </div>
+
+    <!-- Contact · Context -->
+    <div v-if="contextLine" class="text-xs text-[var(--dock-icon)] truncate">
+      {{ contextLine }}
     </div>
 
     <!-- Actions -->

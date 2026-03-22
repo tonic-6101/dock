@@ -1,1 +1,0 @@
-import{ref as a,watch as c}from"/assets/dock/js/vendor/vue.esm.js";const l=a(null);function i(u,f){const e=a(!1);function o(n){n?(l.value=u,e.value=!0):e.value&&(e.value=!1,l.value===u&&(l.value=null),f.value?.focus())}function t(){o(!e.value)}function s(){o(!1)}return c(l,n=>{n!==u&&e.value&&(e.value=!1)}),{open:e,toggle:t,close:s}}export{i as u};

@@ -101,3 +101,13 @@ dock_app_registry = {
     "color": "#6366f1",
     "route": "/dock",
 }
+
+# Register Dock Event as a timer context type so users can link time entries to calendar events
+watch_timer_contexts = [
+    {
+        "doctype": "Dock Event",
+        "label": "Calendar Event",
+        "search_fields": ["title"],
+        "display_field": "title",
+    },
+]

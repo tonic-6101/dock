@@ -3,6 +3,7 @@
 
 import frappe
 import frappe.sessions
+from dock import __version__
 from dock.boot import (
     _get_registered_apps, _get_notification_types, _get_timer_state,
     _get_recent_items, _get_bookmarks, _get_guest_views, _get_settings_sections,
@@ -40,6 +41,7 @@ def get_context(context):
 
     boot = {
         "installed": True,
+        "version": __version__,
         "settings": settings,
         "registered_apps": _get_registered_apps(),
         "notification_types": _get_notification_types(),

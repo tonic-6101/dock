@@ -32,6 +32,9 @@ def extend_bootinfo(bootinfo):
         # Timer — soft dependency on watch (formerly frappe_time)
         "watch_installed": watch_installed,
         "timer_state": _get_timer_state() if watch_installed else None,
+        "timer_context_options": _get_timer_context_options() if watch_installed else [],
+        "focus_defaults": _get_focus_defaults() if watch_installed else {},
+        "stale_threshold_hours": _get_stale_threshold() if watch_installed else 4,
         # Recent items + bookmarks — seeded at boot to avoid extra API calls on mount
         "recent_items": _get_recent_items(merged),
         "bookmarks": _get_bookmarks(merged),
@@ -68,6 +71,9 @@ def get_boot():
         ),
         "watch_installed": watch_installed,
         "timer_state": _get_timer_state() if watch_installed else None,
+        "timer_context_options": _get_timer_context_options() if watch_installed else [],
+        "focus_defaults": _get_focus_defaults() if watch_installed else {},
+        "stale_threshold_hours": _get_stale_threshold() if watch_installed else 4,
         "recent_items": _get_recent_items(merged),
         "bookmarks": _get_bookmarks(merged),
         "search_sections": _get_search_sections(),
@@ -193,6 +199,39 @@ def _get_timer_state():
         return get_state()
     except Exception:
         return {"state": "unavailable"}
+
+
+def _get_timer_context_options():
+    try:
+        from dock.api.timer import get_context_options
+        return get_context_options()
+    except Exception:
+        return []
+
+
+def _get_focus_defaults():
+    """Return focus/Pomodoro defaults from Watch User Settings (per-user) or Watch Settings (org)."""
+    try:
+        user = frappe.session.user
+        if frappe.db.exists("Watch User Settings", user):
+            doc = frappe.get_doc("Watch User Settings", user)
+            return {
+                "sessions": doc.get("focus_sessions") or 4,
+                "work_minutes": doc.get("focus_work_minutes") or 25,
+                "break_minutes": doc.get("focus_break_minutes") or 5,
+            }
+        return {"sessions": 4, "work_minutes": 25, "break_minutes": 5}
+    except Exception:
+        return {"sessions": 4, "work_minutes": 25, "break_minutes": 5}
+
+
+def _get_stale_threshold():
+    """Return stale timer threshold in hours from Watch Settings."""
+    try:
+        val = frappe.db.get_single_value("Watch Settings", "auto_stop_timer_after") or 0
+        return int(val) if int(val) > 0 else 4
+    except Exception:
+        return 4
 
 
 def _get_guest_views():

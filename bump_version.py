@@ -3,15 +3,18 @@
 # Copyright (C) 2024-2026 Tonic
 
 """
-Dock version bumper — updates version in all required files atomically.
+Version bump script — updates all version references in a single command.
 
 Usage:
-    python bump_version.py 0.4.0
-    python bump_version.py patch     # 0.3.0 → 0.3.1
-    python bump_version.py minor     # 0.3.0 → 0.4.0
-    python bump_version.py major     # 0.3.0 → 1.0.0
+    python3 bump_version.py 0.4.0          # explicit version
+    python3 bump_version.py patch          # 0.3.0 → 0.3.1
+    python3 bump_version.py minor          # 0.3.0 → 0.4.0
+    python3 bump_version.py major          # 0.3.0 → 1.0.0
+    python3 bump_version.py --from-changelog
+    python3 bump_version.py 0.4.0 --dry-run
 """
 
+import argparse
 import json
 import re
 import sys
@@ -19,108 +22,180 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
-# All files that contain the version string and how to update them
-VERSION_FILES = [
-    {
-        "path": ROOT / "VERSION",
-        "pattern": r"^\d+\.\d+\.\d+",
-        "replacement": "{version}",
-    },
-    {
-        "path": ROOT / "dock" / "__init__.py",
-        "pattern": r'__version__\s*=\s*"[^"]+"',
-        "replacement": '__version__ = "{version}"',
-    },
-    {
-        "path": ROOT / "frontend" / "package.json",
-        "type": "json",
-        "key": "version",
-    },
-    {
-        "path": ROOT / "README.md",
-        "pattern": r"version-\d+\.\d+\.\d+-blue",
-        "replacement": "version-{version}-blue",
-    },
-]
+
+def detect_app_name() -> str:
+    for child in ROOT.iterdir():
+        if child.is_dir() and (child / "hooks.py").exists():
+            return child.name
+    return ROOT.name
 
 
 def read_current_version() -> str:
-    return (ROOT / "VERSION").read_text().strip()
+    version_file = ROOT / "VERSION"
+    if version_file.exists():
+        return version_file.read_text().strip()
+    return "0.0.0"
 
 
-def parse_version(v: str) -> tuple[int, int, int]:
-    parts = v.split(".")
-    if len(parts) != 3 or not all(p.isdigit() for p in parts):
+def parse_semver(v: str) -> tuple[int, int, int]:
+    match = re.match(r"^(\d+)\.(\d+)\.(\d+)", v)
+    if not match:
         raise ValueError(f"Invalid semver: {v}")
-    return int(parts[0]), int(parts[1]), int(parts[2])
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
-def bump(current: str, level: str) -> str:
-    major, minor, patch = parse_version(current)
+def bump_level(current: str, level: str) -> str:
+    major, minor, patch = parse_semver(current)
     if level == "patch":
         return f"{major}.{minor}.{patch + 1}"
     if level == "minor":
         return f"{major}.{minor + 1}.0"
     if level == "major":
         return f"{major + 1}.0.0"
-    raise ValueError(f"Unknown bump level: {level}")
+    raise ValueError(f"Unknown level: {level}")
 
 
-def update_file(entry: dict, version: str) -> bool:
-    path: Path = entry["path"]
+def get_changelog_version() -> str | None:
+    changelog = ROOT / "docs" / "CHANGELOG.md"
+    if not changelog.exists():
+        return None
+    match = re.search(r"##\s*\[(\d+\.\d+\.\d+)\]", changelog.read_text())
+    return match.group(1) if match else None
+
+
+def validate_version(v: str) -> bool:
+    return bool(re.match(r"^\d+\.\d+\.\d+(-[\w.]+)?$", v))
+
+
+def update_file(path: Path, pattern: str, replacement: str, label: str, dry_run: bool) -> bool:
     if not path.exists():
-        print(f"  SKIP  {path.relative_to(ROOT)} (not found)")
+        print(f"  SKIP  {label} (not found)")
         return False
-
-    if entry.get("type") == "json":
-        data = json.loads(path.read_text())
-        old = data.get(entry["key"])
-        data[entry["key"]] = version
-        path.write_text(json.dumps(data, indent=2) + "\n")
-        print(f"  OK    {path.relative_to(ROOT)}  {old} → {version}")
-        return True
-
     content = path.read_text()
-    pattern = entry["pattern"]
-    replacement = entry["replacement"].format(version=version)
     new_content, count = re.subn(pattern, replacement, content, count=1)
     if count == 0:
-        print(f"  WARN  {path.relative_to(ROOT)} — pattern not matched: {pattern}")
+        print(f"  SKIP  {label} (pattern not matched)")
         return False
+    if dry_run:
+        print(f"  OK    {label} (dry-run)")
+        return True
     path.write_text(new_content)
-    print(f"  OK    {path.relative_to(ROOT)}")
+    print(f"  OK    {label}")
+    return True
+
+
+def update_json(path: Path, key: str, version: str, label: str, dry_run: bool) -> bool:
+    if not path.exists():
+        print(f"  SKIP  {label} (not found)")
+        return False
+    data = json.loads(path.read_text())
+    old = data.get(key)
+    data[key] = version
+    if dry_run:
+        print(f"  OK    {label}  {old} → {version} (dry-run)")
+        return True
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"  OK    {label}  {old} → {version}")
     return True
 
 
 def main():
-    if len(sys.argv) != 2:
-        print(__doc__.strip())
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Bump version across all app files")
+    parser.add_argument("version", nargs="?",
+                        help="New version (e.g. 0.4.0) or level (patch/minor/major)")
+    parser.add_argument("--from-changelog", action="store_true",
+                        help="Read version from latest CHANGELOG.md entry")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Show what would change without writing")
+    args = parser.parse_args()
 
-    arg = sys.argv[1]
+    app_name = detect_app_name()
     current = read_current_version()
 
-    if arg in ("patch", "minor", "major"):
-        new_version = bump(current, arg)
+    # Determine target version
+    if args.from_changelog:
+        new_version = get_changelog_version()
+        if not new_version:
+            print("Error: no version found in docs/CHANGELOG.md")
+            sys.exit(1)
+    elif args.version in ("patch", "minor", "major"):
+        new_version = bump_level(current, args.version)
+    elif args.version:
+        new_version = args.version
     else:
-        # Validate explicit version
-        parse_version(arg)
-        new_version = arg
+        parser.print_help()
+        sys.exit(1)
 
-    if new_version == current:
+    if not validate_version(new_version):
+        print(f"Error: '{new_version}' is not valid semver")
+        sys.exit(1)
+
+    if new_version == current and not args.dry_run:
         print(f"Already at {current}")
         sys.exit(0)
 
-    print(f"\nBumping {current} → {new_version}\n")
+    mode = " (dry-run)" if args.dry_run else ""
+    print(f"\n{app_name}: {current} → {new_version}{mode}\n")
 
-    success = 0
-    for entry in VERSION_FILES:
-        if update_file(entry, new_version):
-            success += 1
+    results = []
 
-    print(f"\n✓ Updated {success}/{len(VERSION_FILES)} files to {new_version}")
-    print(f"\nNext steps:")
-    print(f"  git add -p && git commit -m 'chore: bump version to {new_version}'")
+    # 1. VERSION
+    results.append(update_file(
+        ROOT / "VERSION",
+        r"^\d+\.\d+\.\d+\S*",
+        new_version,
+        "VERSION", args.dry_run,
+    ))
+
+    # 2. __init__.py
+    results.append(update_file(
+        ROOT / app_name / "__init__.py",
+        r'__version__\s*=\s*"[^"]+"',
+        f'__version__ = "{new_version}"',
+        f"{app_name}/__init__.py", args.dry_run,
+    ))
+
+    # 3. frontend/package.json
+    results.append(update_json(
+        ROOT / "frontend" / "package.json",
+        "version", new_version,
+        "frontend/package.json", args.dry_run,
+    ))
+
+    # 4. README.md — version badge (handles both blue and green badge styles)
+    results.append(update_file(
+        ROOT / "README.md",
+        r'version-[\d.]+-(?:blue|green)\.svg("?\s*alt="Version:\s*[\d.]+")?',
+        f'version-{new_version}-blue.svg',
+        "README.md badge", args.dry_run,
+    ))
+
+    # 5. README.md — alt text (if present, e.g. Watch style)
+    readme = ROOT / "README.md"
+    if readme.exists() and 'alt="Version:' in readme.read_text():
+        results.append(update_file(
+            readme,
+            r'alt="Version:\s*[^"]*"',
+            f'alt="Version: {new_version}"',
+            "README.md alt text", args.dry_run,
+        ))
+
+    # 6. setup.py (legacy, if present)
+    setup_py = ROOT / "setup.py"
+    if setup_py.exists():
+        results.append(update_file(
+            setup_py,
+            r'version\s*=\s*"[^"]+"',
+            f'version="{new_version}"',
+            "setup.py", args.dry_run,
+        ))
+
+    ok = sum(1 for r in results if r)
+    total = len(results)
+    print(f"\n{'[dry-run] ' if args.dry_run else ''}Updated {ok}/{total} targets to {new_version}")
+
+    if not args.dry_run:
+        print(f"\n  git add -p && git commit -m 'chore: bump version to {new_version}'")
 
 
 if __name__ == "__main__":
