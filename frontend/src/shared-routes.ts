@@ -61,5 +61,23 @@ export function dockSharedRoutes(prefix: string = ''): RouteRecordRaw[] {
       component: () => import('./pages/DockBookmarksPage.vue'),
       meta: { dockShared: true, title: 'Bookmarks' },
     },
+    {
+      path: `${p}/activity`,
+      name: 'dock-activity',
+      component: () => import('./pages/DockActivityPage.vue'),
+      meta: { dockShared: true, title: 'Activity' },
+    },
+    {
+      path: `${p}/discussions`,
+      name: 'dock-discussions',
+      component: () => import('./pages/DockDiscussionsPage.vue'),
+      meta: { dockShared: true, title: 'Discussions' },
+    },
+    {
+      path: `${p}/discussions/:name`,
+      name: 'dock-discussion-detail',
+      component: () => import('./pages/DockDiscussionDetail.vue'),
+      meta: { dockShared: true, title: 'Discussion' },
+    },
   ]
 }

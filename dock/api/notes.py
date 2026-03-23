@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 from frappe.query_builder import DocType, Order
 from frappe.query_builder.functions import Count
 
@@ -85,7 +86,7 @@ def create(
     Returns the created note dict.
     """
     if not content or not content.strip():
-        frappe.throw(frappe._("Note content cannot be empty"))
+        frappe.throw(_("Note content cannot be empty"))
 
     doc = frappe.new_doc("Dock Note")
     doc.content = content
@@ -144,7 +145,7 @@ def toggle_pin(name: str) -> dict:
 def _check_owner(doc):
     """Ensure current user owns this note."""
     if doc.owner != frappe.session.user and "System Manager" not in frappe.get_roles():
-        frappe.throw(frappe._("You can only edit your own notes"), frappe.PermissionError)
+        frappe.throw(_("You can only edit your own notes"), frappe.PermissionError)
 
 
 def _format_note(doc) -> dict:

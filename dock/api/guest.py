@@ -3,6 +3,7 @@
 
 import secrets
 import frappe
+from frappe import _
 
 
 def _generate_token() -> str:
@@ -107,7 +108,7 @@ def revoke_session(session_name: str) -> dict:
     roles = frappe.get_roles()
     if session.created_by != frappe.session.user and "Dock Manager" not in roles:
         frappe.throw(
-            frappe._("Only the session creator or a Dock Manager can revoke sessions"),
+            _("Only the session creator or a Dock Manager can revoke sessions"),
             frappe.PermissionError,
         )
     frappe.db.set_value("Dock Guest Session", session_name, "is_active", 0)

@@ -14,9 +14,19 @@ import { ref, readonly } from 'vue'
  * any open dropdown (and vice versa, handled by the dropdown composable).
  */
 
-export type PanelType = 'people' | 'calendar' | 'notifications' | 'timer'
+export type PanelType = 'people' | 'calendar' | 'notifications' | 'timer' | 'context' | 'notes'
 
 const activePanel = ref<PanelType | null>(null)
+
+/** Context panel data — set when opening a 'context' panel for a specific record. */
+export interface ContextPanelData {
+  referenceDoctype: string
+  referenceName: string
+  displayName?: string
+  doctypeLabel?: string
+  app?: string
+}
+const contextPanelData = ref<ContextPanelData | null>(null)
 
 // Callback for cross-system notification (set by useDropdownExclusion)
 let onPanelOpenCallback: (() => void) | null = null
@@ -40,11 +50,12 @@ export function useDockPanels() {
 
   function closePanel() {
     activePanel.value = null
+    contextPanelData.value = null
   }
 
   function togglePanel(type: PanelType) {
     if (activePanel.value === type) {
-      activePanel.value = null
+      closePanel()
     } else {
       openPanel(type)
     }
@@ -54,11 +65,20 @@ export function useDockPanels() {
     return activePanel.value === type
   }
 
+  /** Open the contextual panel for a specific record (from activity feed, etc.) */
+  function openContextPanel(data: ContextPanelData) {
+    onPanelOpenCallback?.()
+    contextPanelData.value = data
+    activePanel.value = 'context'
+  }
+
   return {
     activePanel: readonly(activePanel),
+    contextPanelData: readonly(contextPanelData),
     openPanel,
     closePanel,
     togglePanel,
     isPanelOpen,
+    openContextPanel,
   }
 }

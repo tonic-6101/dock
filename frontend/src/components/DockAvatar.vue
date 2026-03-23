@@ -24,14 +24,35 @@ export default { name: 'DockAvatar' }
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
-  UserCircle2, User, SlidersHorizontal, Bookmark, Clock, DoorOpen,
+  UserCircle2, User, SlidersHorizontal, Bookmark, StickyNote, Activity, Clock, DoorOpen,
   Settings, LogOut,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useTheme } from '@/composables/useTheme'
 import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
+import { useDockBoot } from '@/composables/useDockBoot'
 
 const { theme, setTheme } = useTheme()
+const { registeredApps } = useDockBoot()
+
+// Context-aware Activity URL — navigates to /orga/activity when in Orga, /dock/activity as fallback
+const activityUrl = computed(() => {
+  const path = window.location.pathname
+  type App = { route: string }
+  const active = (registeredApps.value as App[]).find(a =>
+    a.route !== '/dock' && path.startsWith(a.route)
+  )
+  return active ? `${active.route}/activity` : '/dock/activity'
+})
+
+const notesUrl = computed(() => {
+  const path = window.location.pathname
+  type App = { route: string }
+  const active = (registeredApps.value as App[]).find(a =>
+    a.route !== '/dock' && path.startsWith(a.route)
+  )
+  return active ? `${active.route}/notes` : '/dock/notes'
+})
 
 const triggerRef  = ref<HTMLButtonElement | null>(null)
 const wrapperRef  = ref<HTMLElement | null>(null)
@@ -192,6 +213,26 @@ onUnmounted(() => {
           >
             <Bookmark class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
             {{ __('Bookmarks') }}
+          </a>
+          <a
+            :href="notesUrl"
+            role="menuitem"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <StickyNote class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Notes') }}
+          </a>
+          <a
+            :href="activityUrl"
+            role="menuitem"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <Activity class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Activity') }}
           </a>
         </div>
 

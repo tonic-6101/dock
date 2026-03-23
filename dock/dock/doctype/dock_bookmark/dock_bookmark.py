@@ -2,13 +2,14 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
 class DockBookmark(Document):
     def validate(self):
         if not self.is_new() and self.get_db_value("user") != self.user:
-            frappe.throw(frappe._("Cannot change bookmark owner"))
+            frappe.throw(_("Cannot change bookmark owner"))
 
 
 def get_permission_query_conditions(user=None):

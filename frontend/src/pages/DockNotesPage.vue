@@ -9,7 +9,7 @@ export default { name: 'DockNotesPage' }
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Pin, PinOff, Trash2, Send, StickyNote, ExternalLink } from 'lucide-vue-next'
+import { Plus, Pin, PinOff, Pencil, Trash2, Send, StickyNote, ExternalLink } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
 import { relativeTime } from '@/composables/useRelativeTime'
@@ -91,6 +91,38 @@ async function deleteNote(name: string) {
     notes.value = notes.value.filter(n => n.name !== name)
     total.value--
   } catch { /* silent */ }
+}
+
+// Inline editing
+const editingName = ref<string | null>(null)
+const editContent = ref('')
+
+function startEdit(note: Note) {
+  editingName.value = note.name
+  editContent.value = note.content.replace(/<[^>]*>/g, '').trim()
+}
+
+function cancelEdit() {
+  editingName.value = null
+  editContent.value = ''
+}
+
+async function saveEdit() {
+  if (!editingName.value || !editContent.value.trim()) return
+  const note = notes.value.find(n => n.name === editingName.value)
+  if (!note) return
+  const oldContent = note.content
+  note.content = editContent.value.trim()
+  try {
+    await callApi('dock.api.notes.update', {
+      name: editingName.value,
+      content: editContent.value.trim(),
+    })
+  } catch {
+    note.content = oldContent
+  }
+  editingName.value = null
+  editContent.value = ''
 }
 
 function navigateToReference(note: Note) {
@@ -189,8 +221,40 @@ onMounted(() => load(true))
       >
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
-            <!-- eslint-disable-next-line vue/no-v-html -->
-            <div class="text-sm text-[var(--dock-text)] prose prose-sm max-w-none" v-html="note.content" />
+            <!-- Edit mode -->
+            <div v-if="editingName === note.name">
+              <textarea
+                v-model="editContent"
+                class="w-full text-sm text-[var(--dock-text)] bg-transparent outline-none resize-none min-h-[60px]
+                       border border-[var(--dock-accent)] rounded-md p-2"
+                autofocus
+                @keydown.meta.enter="saveEdit"
+                @keydown.ctrl.enter="saveEdit"
+                @keydown.escape="cancelEdit"
+              />
+              <div class="flex items-center justify-end gap-2 mt-2">
+                <button
+                  class="text-xs text-[var(--dock-icon)] hover:text-[var(--dock-text)]"
+                  @click="cancelEdit"
+                >{{ __('Cancel') }}</button>
+                <button
+                  class="px-2.5 py-1 rounded-md text-xs font-medium
+                         bg-[var(--dock-accent)] text-white hover:opacity-90 transition-opacity
+                         disabled:opacity-50"
+                  :disabled="!editContent.trim()"
+                  @click="saveEdit"
+                >{{ __('Save') }}</button>
+              </div>
+            </div>
+            <!-- Display mode (click to edit) -->
+            <div
+              v-else
+              class="text-sm text-[var(--dock-text)] prose prose-sm max-w-none cursor-text rounded p-0.5
+                     hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+              :title="__('Click to edit')"
+              v-html="note.content"
+              @click="startEdit(note)"
+            />
           </div>
           <!-- Actions -->
           <div class="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -201,6 +265,13 @@ onMounted(() => load(true))
             >
               <PinOff v-if="note.pinned" class="w-3.5 h-3.5" />
               <Pin v-else class="w-3.5 h-3.5" />
+            </button>
+            <button
+              class="p-1 rounded text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
+              :title="__('Edit')"
+              @click="startEdit(note)"
+            >
+              <Pencil class="w-3.5 h-3.5" />
             </button>
             <button
               class="p-1 rounded text-[var(--dock-icon)] hover:text-red-500 transition-colors"

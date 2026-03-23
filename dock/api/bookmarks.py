@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 
 _MAX_BOOKMARKS = 12
 
@@ -27,7 +28,7 @@ def add(app: str, doctype: str, docname: str, label: str, icon: str = None) -> s
     count = frappe.db.count("Dock Bookmark", {"user": user})
     if count >= _MAX_BOOKMARKS:
         frappe.throw(
-            frappe._("You can have a maximum of {0} bookmarks").format(_MAX_BOOKMARKS),
+            _("You can have a maximum of {0} bookmarks").format(_MAX_BOOKMARKS),
             frappe.ValidationError,
         )
 
@@ -80,7 +81,7 @@ def reorder(ordered_names: list) -> None:
     }
     for name in ordered_names:
         if name not in owned:
-            frappe.throw(frappe._("Permission denied"), frappe.PermissionError)
+            frappe.throw(_("Permission denied"), frappe.PermissionError)
 
     for i, name in enumerate(ordered_names):
         frappe.db.set_value("Dock Bookmark", name, "sort_order", i, update_modified=False)

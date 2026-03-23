@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -30,7 +31,7 @@ def publish(
                 valid_types.append(item["type"])
     if valid_types and notification_type not in valid_types:
         frappe.throw(
-            frappe._(f"Unknown notification_type '{notification_type}' for app '{from_app}'"),
+            _("Unknown notification_type '{0}' for app '{1}'").format(notification_type, from_app),
             frappe.ValidationError,
         )
 

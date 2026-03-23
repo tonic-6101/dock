@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -53,7 +54,7 @@ def save_org_settings(values: dict) -> dict:
     Fires dock_settings_updated realtime after commit.
     """
     if not frappe.has_permission("Dock Settings", "write"):
-        frappe.throw(frappe._("Not permitted"), frappe.PermissionError)
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
 
     sanitised = {k: v for k, v in values.items() if k in _ORG_FIELDS}
     if not sanitised:

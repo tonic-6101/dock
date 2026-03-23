@@ -28,8 +28,14 @@ after_app_uninstall = "dock.utils.after_app_uninstall"
 doc_events = {
     "Dock Guest Session": {
         "on_trash": "dock.dock.doctype.dock_guest_session.dock_guest_session.on_trash",
-    }
+    },
 }
+
+# Dock notification types for comment mentions
+dock_notification_types = [
+    {"type": "comment_mention", "label": "Mentioned in Comment", "icon": "at-sign"},
+    {"type": "discussion_reply", "label": "New Discussion Reply", "icon": "message-circle"},
+]
 
 # Row-level permission filters (custom user fields — if_owner does not apply here)
 permission_query_conditions = {
@@ -41,6 +47,9 @@ permission_query_conditions = {
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.get_permission_query_conditions",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.get_permission_query_conditions",
     "Dock Sync Log":       "dock.dock.doctype.dock_sync_log.dock_sync_log.get_permission_query_conditions",
+    "Dock Comment":        "dock.dock.doctype.dock_comment.dock_comment.get_permission_query_conditions",
+    "Dock Reaction":       "dock.dock.doctype.dock_reaction.dock_reaction.get_permission_query_conditions",
+    "Dock Discussion":     "dock.dock.doctype.dock_discussion.dock_discussion.get_permission_query_conditions",
 }
 
 # Document-level permission checks (single record access)
@@ -53,6 +62,9 @@ has_permission = {
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.has_permission",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.has_permission",
     "Dock Sync Log":       "dock.dock.doctype.dock_sync_log.dock_sync_log.has_permission",
+    "Dock Comment":        "dock.dock.doctype.dock_comment.dock_comment.has_permission",
+    "Dock Reaction":       "dock.dock.doctype.dock_reaction.dock_reaction.has_permission",
+    "Dock Discussion":     "dock.dock.doctype.dock_discussion.dock_discussion.has_permission",
 }
 
 # Scheduled tasks
@@ -91,6 +103,47 @@ dock_search_sections = [
         "search_fields": ["full_name", "email_id", "phone"],
         "display_field": "full_name",
         "route_template": "/dock/people/{name}",
+    },
+    {
+        "label": "Discussions",
+        "doctype": "Dock Discussion",
+        "search_fields": ["title"],
+        "display_field": "title",
+        "route_template": "/dock/discussions/{name}",
+    },
+]
+
+# Activity sources — register Dock's own doctypes so they appear in the activity feed
+dock_activity_sources = [
+    {
+        "doctype": "Dock Comment",
+        "label": "Comments",
+        "icon": "message-circle",
+        "display_field": "content",
+    },
+    {
+        "doctype": "Dock Discussion",
+        "label": "Discussions",
+        "icon": "message-square",
+        "display_field": "title",
+    },
+    {
+        "doctype": "Dock Event",
+        "label": "Calendar Events",
+        "icon": "calendar",
+        "display_field": "title",
+    },
+    {
+        "doctype": "Dock Bookmark",
+        "label": "Bookmarks",
+        "icon": "bookmark",
+        "display_field": "label",
+    },
+    {
+        "doctype": "Dock Note",
+        "label": "Notes",
+        "icon": "file-text",
+        "display_field": "reference_label",
     },
 ]
 

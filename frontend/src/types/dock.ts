@@ -37,3 +37,91 @@ export interface DockContextPanel {
   link?: string
   link_label?: string
 }
+
+// ── Activity & Discussions (#40-42) ─────────────────────────────────
+
+export interface DockComment {
+  name: string
+  reference_doctype: string
+  reference_name: string
+  content: string
+  user: string
+  user_fullname: string
+  user_image: string | null
+  parent_comment: string | null
+  note_type: 'General' | 'Note' | 'Decision' | 'Protocol' | 'System'
+  visibility: 'Internal' | 'Team' | 'Public'
+  is_resolved: 0 | 1
+  resolved_by: string | null
+  resolved_at: string | null
+  is_pinned: 0 | 1
+  pinned_by: string | null
+  pinned_at: string | null
+  reply_count: number
+  creation: string
+}
+
+export interface DockReactionSummary {
+  acknowledge: { count: number; users: string[]; current_user: boolean }
+  celebrate: { count: number; users: string[]; current_user: boolean }
+  seen: { count: number; users: string[]; current_user: boolean }
+  flag: { count: number; users: string[]; current_user: boolean }
+}
+
+export interface DockDiscussion {
+  name: string
+  title: string
+  content: string
+  discussion_type: 'General' | 'Decision' | 'Meeting Protocol' | 'Retrospective' | 'Proposal'
+  status: 'Open' | 'Resolved' | 'Archived'
+  created_by: string
+  created_by_fullname: string
+  source_app: string | null
+  is_pinned: 0 | 1
+  resolved_summary: string | null
+  resolved_by: string | null
+  resolved_at: string | null
+  reply_count: number
+  last_reply_at: string | null
+  last_reply_by: string | null
+  creation: string
+  linked_records: DockDiscussionLink[]
+  participants: DockDiscussionParticipant[]
+  has_unread?: boolean
+  unread_count?: number
+}
+
+export interface DockDiscussionLink {
+  reference_doctype: string
+  reference_name: string
+  link_label: string | null
+}
+
+export interface DockDiscussionParticipant {
+  user: string
+  role: 'Author' | 'Participant' | 'Mentioned'
+  user_fullname?: string
+  last_read_at: string | null
+}
+
+export interface ActivityFeedItem {
+  type: 'insert' | 'update' | 'create' | 'delete' | 'comment' | 'discussion'
+  doctype?: string
+  doctype_label?: string
+  docname?: string
+  display_name?: string
+  app?: string
+  name?: string
+  title?: string
+  user: string
+  user_fullname: string
+  user_image?: string | null
+  timestamp: string
+  summary?: string
+  field_changes?: { field: string; old: string; new: string }[]
+  comment_count?: number
+  discussion_count?: number
+  discussion_type?: string
+  status?: string
+  reply_count?: number
+}

@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "autoname": "format:DD-{####}",
+ "creation": "2026-03-22 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "discussion_type",
+  "status",
+  "source_app",
+  "created_by",
+  "section_content",
+  "content",
+  "section_resolution",
+  "resolved_summary",
+  "resolved_by",
+  "resolved_at",
+  "section_linked_records",
+  "linked_records",
+  "section_participants",
+  "participants",
+  "section_activity",
+  "is_pinned",
+  "last_reply_at",
+  "last_reply_by",
+  "column_break_activity",
+  "reply_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "discussion_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "General\nDecision\nMeeting Protocol\nRetrospective\nProposal",
+   "default": "General",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nResolved\nArchived",
+   "default": "Open",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "source_app",
+   "fieldtype": "Data",
+   "label": "Source App"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Author",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_content",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_resolution",
+   "fieldtype": "Section Break",
+   "label": "Resolution"
+  },
+  {
+   "fieldname": "resolved_summary",
+   "fieldtype": "Small Text",
+   "label": "Resolution",
+   "depends_on": "eval:doc.status=='Resolved'"
+  },
+  {
+   "fieldname": "resolved_by",
+   "fieldtype": "Link",
+   "label": "Resolved By",
+   "options": "User",
+   "read_only": 1,
+   "depends_on": "eval:doc.status=='Resolved'"
+  },
+  {
+   "fieldname": "resolved_at",
+   "fieldtype": "Datetime",
+   "label": "Resolved At",
+   "read_only": 1,
+   "depends_on": "eval:doc.status=='Resolved'"
+  },
+  {
+   "fieldname": "section_linked_records",
+   "fieldtype": "Section Break",
+   "label": "Linked Records"
+  },
+  {
+   "fieldname": "linked_records",
+   "fieldtype": "Table",
+   "label": "Linked Records",
+   "options": "Dock Discussion Link"
+  },
+  {
+   "fieldname": "section_participants",
+   "fieldtype": "Section Break",
+   "label": "Participants"
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "label": "Participants",
+   "options": "Dock Discussion Participant"
+  },
+  {
+   "fieldname": "section_activity",
+   "fieldtype": "Section Break",
+   "label": "Activity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_pinned",
+   "fieldtype": "Check",
+   "label": "Pinned",
+   "default": "0"
+  },
+  {
+   "fieldname": "last_reply_at",
+   "fieldtype": "Datetime",
+   "label": "Last Reply",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_reply_by",
+   "fieldtype": "Link",
+   "label": "Last Reply By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_activity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reply_count",
+   "fieldtype": "Int",
+   "label": "Replies",
+   "default": "0",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Discussion",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Dock User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Dock Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

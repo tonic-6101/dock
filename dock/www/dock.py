@@ -7,6 +7,7 @@ from dock import __version__
 from dock.boot import (
     _get_registered_apps, _get_notification_types, _get_timer_state,
     _get_recent_items, _get_bookmarks, _get_guest_views, _get_settings_sections,
+    _get_activity_sources, _get_unread_discussions_count,
 )
 from dock.api.settings import _get_merged_settings
 
@@ -71,6 +72,8 @@ def get_context(context):
         ) is not None,
         "guest_views": _get_guest_views(),
         "settings_sections": _get_settings_sections(),
+        "activity_sources": _get_activity_sources(),
+        "unread_discussions": _get_unread_discussions_count(),
     }
     # Pre-serialized so the template can output it with {{ dock_boot_json }}
     # without needing tojson filter (which may be blocked in safe_render mode)

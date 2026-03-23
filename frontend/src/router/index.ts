@@ -100,6 +100,28 @@ const router = createRouter({
       component: () => import('@/pages/DockGuestPortalPage.vue'),
     },
 
+    // ── Activity & Discussions ──────────────────────────────────────────
+    {
+      path: '/activity',
+      name: 'dock-activity',
+      component: () => import('@/pages/DockActivityPage.vue'),
+    },
+    {
+      path: '/discussions',
+      name: 'dock-discussions',
+      component: () => import('@/pages/DockDiscussionsPage.vue'),
+    },
+    {
+      path: '/discussions/new',
+      name: 'dock-discussion-new',
+      component: () => import('@/pages/DockDiscussionNew.vue'),
+    },
+    {
+      path: '/discussions/:name',
+      name: 'dock-discussion-detail',
+      component: () => import('@/pages/DockDiscussionDetail.vue'),
+    },
+
     // ── Catch-all ─────────────────────────────────────────────────────
     {
       path: '/:pathMatch(.*)*',

@@ -3,7 +3,7 @@
   Copyright (C) 2024-2026 Tonic
 
   Main top bar component — exported for dynamic import by domain apps.
-  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Bell | Jana | AppSwitcher | Avatar
+  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Calendar | People | Notes | Discussions | Bell | Jana | AppSwitcher | Avatar
 -->
 <script lang="ts">
 export default { name: 'DockNavbar' }
@@ -122,6 +122,7 @@ const DockTimerButton     = defineAsyncComponent(() => import('./DockTimerButton
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
 const DockNotesIcon       = defineAsyncComponent(() => import('./DockNotesIcon.vue'))
+const DockDiscussionsIcon = defineAsyncComponent(() => import('./DockDiscussionsIcon.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -156,6 +157,7 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
       <DockCalendarIcon />
       <DockPeopleIcon />
       <DockNotesIcon />
+      <DockDiscussionsIcon />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

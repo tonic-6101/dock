@@ -1,0 +1,178 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-03-22 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_content",
+  "content",
+  "user",
+  "note_type",
+  "visibility",
+  "section_reference",
+  "reference_doctype",
+  "reference_name",
+  "parent_comment",
+  "section_mentions",
+  "mentions",
+  "section_moderation",
+  "is_resolved",
+  "resolved_by",
+  "resolved_at",
+  "column_break_moderation",
+  "is_pinned",
+  "pinned_by",
+  "pinned_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_content",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Author",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "General",
+   "fieldname": "note_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "General\nNote\nDecision\nProtocol\nSystem"
+  },
+  {
+   "default": "Team",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Internal\nTeam\nPublic"
+  },
+  {
+   "fieldname": "section_reference",
+   "fieldtype": "Section Break",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Type",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "reqd": 1
+  },
+  {
+   "fieldname": "parent_comment",
+   "fieldtype": "Link",
+   "label": "Reply To",
+   "options": "Dock Comment"
+  },
+  {
+   "fieldname": "section_mentions",
+   "fieldtype": "Section Break",
+   "label": "Mentions"
+  },
+  {
+   "fieldname": "mentions",
+   "fieldtype": "Table",
+   "label": "Mentions",
+   "options": "Dock Comment Mention"
+  },
+  {
+   "fieldname": "section_moderation",
+   "fieldtype": "Section Break",
+   "label": "Moderation"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_resolved",
+   "fieldtype": "Check",
+   "label": "Resolved",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_resolved",
+   "fieldname": "resolved_by",
+   "fieldtype": "Link",
+   "label": "Resolved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_resolved",
+   "fieldname": "resolved_at",
+   "fieldtype": "Datetime",
+   "label": "Resolved At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_moderation",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_pinned",
+   "fieldtype": "Check",
+   "label": "Pinned",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_pinned",
+   "fieldname": "pinned_by",
+   "fieldtype": "Link",
+   "label": "Pinned By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_pinned",
+   "fieldname": "pinned_at",
+   "fieldtype": "Datetime",
+   "label": "Pinned At",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Comment",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Dock User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Dock Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

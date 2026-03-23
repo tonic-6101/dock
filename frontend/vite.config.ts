@@ -218,6 +218,8 @@ export default defineConfig({
         'dock-navbar.esm': path.resolve(__dirname, 'src/navbar.ts'),
         // Full Vue SPA served at /dock/* via website_route_rules
         'dock-app': path.resolve(__dirname, 'src/app.ts'),
+        // Collaboration components ESM — domain apps import from /assets/dock/js/dock-collab.esm.js
+        'dock-collab.esm': path.resolve(__dirname, 'src/collab.ts'),
       },
       // Preserve named exports on entry points — domain apps do:
       //   import { DockLayout } from '/assets/dock/js/dock-navbar.esm.js'

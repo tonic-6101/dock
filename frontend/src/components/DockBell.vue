@@ -14,6 +14,7 @@ export default { name: 'DockBell' }
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Bell } from 'lucide-vue-next'
+import { __ } from '@/composables/useTranslate'
 import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 import DockNotificationDropdown from './notifications/DockNotificationDropdown.vue'
 
@@ -89,7 +90,7 @@ function handleClose() {
              text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
       :aria-expanded="open"
       :aria-label="unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'"
-      title="Notifications"
+      :title="__('Notifications')"
       @click.stop="toggle"
     >
       <Bell class="w-4 h-4" />

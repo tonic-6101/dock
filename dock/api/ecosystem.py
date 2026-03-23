@@ -3,6 +3,7 @@
 
 import json
 import frappe
+from frappe import _
 
 _REGISTRY_CACHE_KEY = "dock:app_registry"
 _REGISTRY_TTL = 86_400  # 24 hours
@@ -45,7 +46,7 @@ def _fm_post(path: str, payload: dict) -> dict:
     fm_url = _get_fm_url()
     if not fm_url:
         frappe.throw(
-            frappe._("Frappe Manager URL is not configured in Dock Settings."),
+            _("Frappe Manager URL is not configured in Dock Settings."),
             frappe.ValidationError,
         )
     resp = requests.post(f"{fm_url.rstrip('/')}{path}", json=payload, timeout=30)
@@ -59,7 +60,7 @@ def _fm_get(path: str) -> dict:
     fm_url = _get_fm_url()
     if not fm_url:
         frappe.throw(
-            frappe._("Frappe Manager URL is not configured in Dock Settings."),
+            _("Frappe Manager URL is not configured in Dock Settings."),
             frappe.ValidationError,
         )
     resp = requests.get(f"{fm_url.rstrip('/')}{path}", timeout=10)

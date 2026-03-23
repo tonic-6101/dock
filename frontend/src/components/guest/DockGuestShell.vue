@@ -43,7 +43,7 @@ const siteName = computed(() => props.siteLabel || window.location.hostname)
           target="_blank"
           rel="noopener noreferrer"
           class="hover:text-[var(--dock-text)] transition-colors"
-        >Privacy Policy</a>
+        >{{ __('Privacy Policy') }}</a>
       </template>
     </footer>
   </div>

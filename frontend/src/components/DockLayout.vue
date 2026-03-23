@@ -27,6 +27,8 @@ import DockNavbar from './DockNavbar.vue'
 
 const DockPanelBackdrop = defineAsyncComponent(() => import('./DockPanelBackdrop.vue'))
 const DockTimerPanel = defineAsyncComponent(() => import('./DockTimerPanel.vue'))
+const DockContextPanel = defineAsyncComponent(() => import('./DockContextPanel.vue'))
+const DockNotesPanel = defineAsyncComponent(() => import('./DockNotesPanel.vue'))
 
 const { activePanel, closePanel } = useDockPanels()
 </script>
@@ -40,6 +42,8 @@ const { activePanel, closePanel } = useDockPanels()
       <!-- Contextual panel overlay -->
       <DockPanelBackdrop v-if="activePanel" @close="closePanel" />
       <DockTimerPanel v-if="activePanel === 'timer'" />
+      <DockContextPanel v-if="activePanel === 'context'" />
+      <DockNotesPanel v-if="activePanel === 'notes'" />
     </div>
   </div>
 </template>

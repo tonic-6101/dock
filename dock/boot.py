@@ -46,6 +46,10 @@ def extend_bootinfo(bootinfo):
         "settings_sections": _get_settings_sections(),
         # Bridges — collected from dock_bridges hooks; drives Integrations dashboard
         "bridges": _get_bridges(),
+        # Activity sources — collected from dock_activity_sources hooks; drives activity feed filters
+        "activity_sources": _get_activity_sources(),
+        # Unread discussions — badge count for discussions nav
+        "unread_discussions": _get_unread_discussions_count(),
     }
 
 
@@ -80,6 +84,8 @@ def get_boot():
         "guest_views": _get_guest_views(),
         "settings_sections": _get_settings_sections(),
         "bridges": _get_bridges(),
+        "activity_sources": _get_activity_sources(),
+        "unread_discussions": _get_unread_discussions_count(),
     }
 
 
@@ -388,3 +394,44 @@ def _get_bridges():
                     **unwrapped,
                 })
     return bridges
+
+
+def _get_activity_sources():
+    """
+    Collects dock_activity_sources from all installed apps.
+    Shape: [{ "app": "orga", "doctype": "Orga Task", "label": "Task", "icon": "check-square" }, ...]
+    Used by the activity feed to determine which doctypes generate visible activity.
+    """
+    sources = []
+    for app in frappe.get_installed_apps():
+        for source_list in frappe.get_hooks("dock_activity_sources", app_name=app):
+            items = source_list if isinstance(source_list, list) else [source_list]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                unwrapped = {
+                    k: v[0] if isinstance(v, list) and len(v) == 1 else v
+                    for k, v in item.items()
+                }
+                sources.append({"app": app, **unwrapped})
+    return sources
+
+
+def _get_unread_discussions_count():
+    """Count discussions where the current user is a participant with unread replies."""
+    user = frappe.session.user
+    if not frappe.db.exists("DocType", "Dock Discussion"):
+        return 0
+    try:
+        result = frappe.db.sql("""
+            SELECT COUNT(DISTINCT dd.name)
+            FROM `tabDock Discussion` dd
+            INNER JOIN `tabDock Discussion Participant` ddp
+                ON ddp.parent = dd.name AND ddp.user = %s
+            WHERE dd.status = 'Open'
+              AND dd.last_reply_at IS NOT NULL
+              AND (ddp.last_read_at IS NULL OR ddp.last_read_at < dd.last_reply_at)
+        """, (user,))
+        return result[0][0] if result else 0
+    except Exception:
+        return 0

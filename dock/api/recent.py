@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 
 
 @frappe.whitelist()
@@ -63,7 +64,7 @@ def remove(recent_item_name: str) -> None:
     """Remove a single recent item (user-initiated privacy control)."""
     doc = frappe.get_doc("Dock Recent Item", recent_item_name)
     if doc.user != frappe.session.user and "System Manager" not in frappe.get_roles():
-        frappe.throw(frappe._("Not permitted"), frappe.PermissionError)
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
     frappe.delete_doc("Dock Recent Item", recent_item_name, ignore_permissions=True)
 
 

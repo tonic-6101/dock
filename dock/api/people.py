@@ -2,6 +2,7 @@
 # Copyright (C) 2024-2026 Tonic
 
 import frappe
+from frappe import _
 from frappe.query_builder import DocType, Order
 from frappe.query_builder.functions import Count
 
@@ -420,7 +421,7 @@ def upload_file(contact_name: str) -> dict:
 
     files = frappe.request.files
     if not files or "file" not in files:
-        frappe.throw(frappe._("No file uploaded"))
+        frappe.throw(_("No file uploaded"))
 
     uploaded = files["file"]
     file_doc = frappe.get_doc({
@@ -492,12 +493,12 @@ def update_contact(contact_name: str, field: str, value) -> dict:
     Returns the updated field value.
     """
     if field not in EDITABLE_FIELDS:
-        frappe.throw(frappe._("Field '{0}' is not editable").format(field))
+        frappe.throw(_("Field '{0}' is not editable").format(field))
 
     doc = frappe.get_doc("Contact", contact_name)
     user = frappe.session.user
     if doc.owner != user and "System Manager" not in frappe.get_roles():
-        frappe.throw(frappe._("Only the contact owner can edit this contact"), frappe.PermissionError)
+        frappe.throw(_("Only the contact owner can edit this contact"), frappe.PermissionError)
 
     # Type coercion for Check fields
     if field in ("dock_archived", "dock_do_not_contact"):
@@ -517,11 +518,11 @@ def upload_image(contact_name: str) -> dict:
     doc = frappe.get_doc("Contact", contact_name)
     user = frappe.session.user
     if doc.owner != user and "System Manager" not in frappe.get_roles():
-        frappe.throw(frappe._("Only the contact owner can change the photo"), frappe.PermissionError)
+        frappe.throw(_("Only the contact owner can change the photo"), frappe.PermissionError)
 
     files = frappe.request.files
     if not files or "file" not in files:
-        frappe.throw(frappe._("No file uploaded"))
+        frappe.throw(_("No file uploaded"))
 
     uploaded = files["file"]
     file_doc = frappe.get_doc(
@@ -547,7 +548,7 @@ def add_tag(contact_name: str, tag: str) -> dict:
     _check_contact_edit_permission(contact_name)
     tag = tag.strip()
     if not tag:
-        frappe.throw(frappe._("Tag cannot be empty"))
+        frappe.throw(_("Tag cannot be empty"))
 
     from frappe.desk.doctype.tag.tag import add_tag as _add_tag
     _add_tag(tag=tag, dt="Contact", dn=contact_name)
@@ -657,7 +658,7 @@ def _check_contact_edit_permission(contact_name: str):
     doc = frappe.get_doc("Contact", contact_name)
     user = frappe.session.user
     if doc.owner != user and "System Manager" not in frappe.get_roles():
-        frappe.throw(frappe._("Only the contact owner can edit this contact"), frappe.PermissionError)
+        frappe.throw(_("Only the contact owner can edit this contact"), frappe.PermissionError)
     return doc
 
 
@@ -693,11 +694,11 @@ def create_address(
     _check_contact_edit_permission(contact_name)
 
     if not address_line1 or not city or not country:
-        frappe.throw(frappe._("Address line 1, city, and country are required"))
+        frappe.throw(_("Address line 1, city, and country are required"))
 
     # Validate country exists in the Country doctype (Link field)
     if not frappe.db.exists("Country", country):
-        frappe.throw(frappe._("Country '{0}' not found. Please select a valid country.").format(country))
+        frappe.throw(_("Country '{0}' not found. Please select a valid country.").format(country))
 
     # Ensure a default Address Template exists (required by Frappe for address display)
     _ensure_address_template()
@@ -748,7 +749,7 @@ def update_address(
         for link in addr.links
     )
     if not linked:
-        frappe.throw(frappe._("Address is not linked to this contact"))
+        frappe.throw(_("Address is not linked to this contact"))
 
     if address_type is not None:
         addr.address_type = address_type
