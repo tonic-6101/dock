@@ -23,7 +23,7 @@ const currentPath = ref(window.location.pathname)
 
 const { open, toggle, close } = useDropdownExclusion('switcher', triggerRef)
 
-type App = { app: string; label: string; icon?: string; color: string; route: string }
+type App = { app: string; label: string; icon?: string; color: string; route: string; description?: string }
 
 const isSystemManager = computed(() => {
   const deskRoles = ((window as any).frappe?.boot?.user?.roles ?? []) as string[]
@@ -184,17 +184,35 @@ onUnmounted(() => {
                 @click.prevent="navigateTo(app)"
               >
                 <span
-                  class="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
-                  :class="!app.icon ? 'text-white text-xl font-bold' : ''"
-                  :style="!app.icon ? { backgroundColor: app.color } : {}"
+                  class="w-12 h-12 flex items-center justify-center flex-shrink-0"
                 >
                   <img
                     v-if="app.icon"
                     :src="app.icon"
                     :alt="app.label"
-                    class="w-full h-full object-contain"
+                    class="w-full h-full object-contain rounded-xl"
                   />
-                  <template v-else>{{ app.label[0] }}</template>
+                  <!-- Fallback: squircle with app color + first letter -->
+                  <svg
+                    v-else
+                    viewBox="0 0 48 48"
+                    class="w-full h-full"
+                    :aria-label="app.label"
+                  >
+                    <rect
+                      width="48" height="48" rx="12"
+                      :fill="app.color"
+                    />
+                    <text
+                      x="24" y="24"
+                      text-anchor="middle"
+                      dominant-baseline="central"
+                      fill="white"
+                      font-size="22"
+                      font-weight="700"
+                      font-family="system-ui, -apple-system, sans-serif"
+                    >{{ app.label[0] }}</text>
+                  </svg>
                 </span>
                 <span class="text-xs text-[var(--dock-text)] truncate w-full leading-tight">
                   {{ app.label }}

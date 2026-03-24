@@ -151,7 +151,7 @@ dock_activity_sources = [
 dock_app_registry = {
     "label": "Dock",
     "icon": "/assets/dock/images/dock-icon.svg",
-    "color": "#6366f1",
+    "color": "#475569",
     "route": "/dock",
 }
 

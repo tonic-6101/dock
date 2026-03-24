@@ -27,7 +27,7 @@ declare global {
           registered_apps: Array<{
             app: string
             label: string
-            icon: string
+            icon?: string
             color: string
             route: string
             description?: string

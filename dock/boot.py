@@ -89,7 +89,7 @@ def get_boot():
     }
 
 
-_REQUIRED_APP_REGISTRY_FIELDS = {"label", "icon", "color", "route"}
+_REQUIRED_APP_REGISTRY_FIELDS = {"label", "color", "route"}
 
 
 def _get_registered_apps():
@@ -279,6 +279,7 @@ def _get_settings_sections():
     }, ...]
     """
     sections = []
+    declared_apps = set()
     for app in frappe.get_installed_apps():
         hook_sections = frappe.get_hooks("dock_settings_sections", app_name=app)
         if not hook_sections:
@@ -316,6 +317,21 @@ def _get_settings_sections():
                                 })
                     unwrapped["sections"] = clean_sections
                 sections.append({"app": app, **unwrapped})
+                declared_apps.add(app)
+
+    # Auto-generate entries for registered apps that don't declare their own settings
+    for reg in _get_registered_apps():
+        app = reg["app"]
+        if app in declared_apps or app == "dock":
+            continue
+        sections.append({
+            "app": app,
+            "label": reg.get("label", app.title()),
+            "icon": reg.get("icon", ""),
+            "icon_url": reg.get("icon", ""),
+            "route": app,
+        })
+
     return sections
 
 
