@@ -19,7 +19,7 @@ import { __ } from '@/composables/useTranslate'
 import { useDockBoot } from '@/composables/useDockBoot'
 
 const route = useRoute()
-const { dock } = useDockBoot()
+const { dock, registeredApps } = useDockBoot()
 
 const appName = computed(() => route.params.appName as string)
 
@@ -28,9 +28,23 @@ const section = computed(() => {
   return sections.find((s: any) => s.route === appName.value) ?? null
 })
 
+// Whether this app has a custom settings bundle or is a generic entry
+const hasCustomBundle = computed(() => Boolean(section.value?.bundle && section.value?.component))
+
+// App registry entry — used for the generic fallback page
+const registryEntry = computed(() =>
+  registeredApps.value.find((a: any) => a.app === appName.value) ?? null
+)
+
+// App version from Frappe boot versions
+const appVersion = computed(() => {
+  const versions = (window as any).frappe?.boot?.versions ?? {}
+  return versions[appName.value]?.version ?? null
+})
+
 // Lazy-load the app's settings component from its ESM bundle
 const AppSettingsComponent = computed<Component | null>(() => {
-  if (!section.value?.bundle || !section.value?.component) return null
+  if (!hasCustomBundle.value) return null
 
   return defineAsyncComponent({
     loader: () =>
@@ -78,12 +92,55 @@ const activeSection = computed(() => (route.query.section as string) ?? undefine
       {{ section.label }} {{ __('Settings') }}
     </h1>
 
-    <!-- App settings component (lazy-loaded from ESM bundle) -->
+    <!-- Custom app settings component (lazy-loaded from ESM bundle) -->
     <component
       v-if="AppSettingsComponent"
       :is="AppSettingsComponent"
       :section="activeSection"
     />
+
+    <!-- Generic fallback for apps without custom settings -->
+    <div v-else-if="section && !hasCustomBundle" class="space-y-6">
+      <!-- App info card -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+        <div class="flex items-center gap-4 mb-4">
+          <img
+            v-if="registryEntry?.icon"
+            :src="registryEntry.icon"
+            :alt="section.label"
+            class="w-10 h-10 rounded-lg"
+          />
+          <div
+            v-else
+            class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+            :style="{ backgroundColor: registryEntry?.color ?? '#6b7280' }"
+          >
+            {{ section.label.charAt(0) }}
+          </div>
+          <div>
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ section.label }}</h2>
+            <p v-if="appVersion" class="text-xs text-gray-500 dark:text-gray-400">v{{ appVersion }}</p>
+          </div>
+        </div>
+
+        <p v-if="registryEntry?.description" class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {{ registryEntry.description }}
+        </p>
+
+        <div class="flex items-center gap-3">
+          <a
+            :href="registryEntry?.route ?? `/${appName}`"
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors no-underline"
+          >
+            {{ __('Open') }} {{ section.label }}
+          </a>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 dark:text-gray-500">
+        {{ __('This app does not provide custom settings yet.') }}
+      </p>
+    </div>
 
     <!-- App not found -->
     <div v-else-if="!section" class="text-center py-20">
