@@ -18,9 +18,10 @@ try {
 // this URL, guaranteeing a single Vue runtime across all bundles.
 // Without this, each app bundles its own Vue and cross-bundle components crash.
 const SHARED_VUE_URL = '/assets/dock/js/vendor/vue.esm.js'
+const SHARED_VUE_ROUTER_URL = '/assets/dock/js/vendor/vue-router.esm.js'
 
-// Plugin: intercept `import ... from 'vue'` and make it external, pointing
-// to the shared URL. Must run before @vitejs/plugin-vue's resolveId.
+// Plugin: intercept `import ... from 'vue'` and `vue-router` and make them
+// external, pointing to shared URLs. Must run before @vitejs/plugin-vue's resolveId.
 function vueSharedPlugin(): Plugin {
   return {
     name: 'vue-shared',
@@ -29,20 +30,32 @@ function vueSharedPlugin(): Plugin {
       if (id === 'vue' || id === '@vue/runtime-dom' || id === '@vue/runtime-core' || id === '@vue/reactivity') {
         return { id: SHARED_VUE_URL, external: true }
       }
+      if (id === 'vue-router') {
+        return { id: SHARED_VUE_ROUTER_URL, external: true }
+      }
     },
   }
 }
 
 // Plugin: copy Vue's runtime ESM browser build to the output directory
 // so it's served at /assets/dock/js/vendor/vue.esm.js by Frappe.
-function copyVueRuntime(): Plugin {
+// Also copies vue-router with its bare `vue` import rewritten to the shared URL.
+function copyVendorRuntimes(): Plugin {
   return {
-    name: 'copy-vue-runtime',
+    name: 'copy-vendor-runtimes',
     writeBundle() {
-      const src = path.resolve(__dirname, 'node_modules/vue/dist/vue.runtime.esm-browser.prod.js')
-      const dest = path.resolve(__dirname, '../dock/public/js/vendor/vue.esm.js')
-      fs.mkdirSync(path.dirname(dest), { recursive: true })
-      fs.copyFileSync(src, dest)
+      const vendorDir = path.resolve(__dirname, '../dock/public/js/vendor')
+      fs.mkdirSync(vendorDir, { recursive: true })
+
+      // Vue runtime
+      const vueSrc = path.resolve(__dirname, 'node_modules/vue/dist/vue.runtime.esm-browser.prod.js')
+      fs.copyFileSync(vueSrc, path.join(vendorDir, 'vue.esm.js'))
+
+      // Vue Router — rewrite bare `from"vue"` to the shared URL so the browser can resolve it
+      const routerSrc = path.resolve(__dirname, 'node_modules/vue-router/dist/vue-router.esm-browser.prod.js')
+      let routerCode = fs.readFileSync(routerSrc, 'utf-8')
+      routerCode = routerCode.replace(/from\s*"vue"/g, `from"${SHARED_VUE_URL}"`)
+      fs.writeFileSync(path.join(vendorDir, 'vue-router.esm.js'), routerCode)
     },
   }
 }
@@ -192,7 +205,7 @@ export default defineConfig({
       lucideIcons: true,
       jinjaBootData: true,
     }),
-    copyVueRuntime(),
+    copyVendorRuntimes(),
     cssInjectedByJs(),
     copyTokensCss(),
     deskBundleLoader(),
