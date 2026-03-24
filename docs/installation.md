@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Frappe v15 or later
-- Python 3.10+
+- Frappe v16 or later
+- Python 3.14+
 - MariaDB 10.6+
 
 ## Install

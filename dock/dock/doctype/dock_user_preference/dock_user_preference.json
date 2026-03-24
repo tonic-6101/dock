@@ -8,6 +8,7 @@
  "field_order": [
   "user",
   "theme",
+  "color_mode",
   "timezone",
   "week_start",
   "date_format",
@@ -29,6 +30,13 @@
    "label": "Theme",
    "options": "\nlight\ndark\nsystem",
    "description": "Blank = use browser/system preference"
+  },
+  {
+   "fieldname": "color_mode",
+   "fieldtype": "Select",
+   "label": "Color Mode",
+   "options": "\nbranded\nneutral",
+   "description": "Branded = each app has its own accent color. Neutral = all apps use slate."
   },
   {
    "fieldname": "timezone",

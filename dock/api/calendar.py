@@ -8,30 +8,49 @@ from frappe.utils import get_datetime, add_to_date
 
 
 @frappe.whitelist()
-def get_events(start: str, end: str, sources: list = None) -> list:
+def get_events(start: str, end: str, sources: list = None, calendars: list = None) -> list:
     """
-    Returns Dock Events for the current user whose start_datetime falls in [start, end].
-    start / end: ISO datetime strings, e.g. "2026-03-01 00:00:00"
-    sources: optional list of source_app values to pre-filter (URL param support).
-             Client-side toggle filtering is done in the frontend — do not pass hidden apps here.
+    Returns Dock Events visible to the current user in [start, end].
+    Includes: own events + events from shared calendars.
+    sources: optional list of source_app values to pre-filter.
+    calendars: optional list of Dock Calendar names to filter.
     """
-    filters = {
-        "user": frappe.session.user,
-        "start_datetime": ["between", [start, end]],
-    }
-    if sources:
-        filters["source_app"] = ["in", sources]
+    user = frappe.session.user
+    escaped = frappe.db.escape(user)
 
-    return frappe.get_all(
-        "Dock Event",
-        filters=filters,
-        fields=[
-            "name", "title", "start_datetime", "end_datetime",
-            "all_day", "event_type", "color", "url", "status",
-            "location", "meeting_url",
-            "source_app", "source_doctype", "source_name", "description",
-        ],
-        order_by="start_datetime asc",
+    # Build WHERE clause for visibility: own events OR shared calendar events
+    member_sq = (
+        f"SELECT parent FROM `tabDock Calendar Member` WHERE user = {escaped}"
+    )
+    where = (
+        f"(`tabDock Event`.`user` = {escaped}"
+        f" OR `tabDock Event`.`calendar` IN ({member_sq}))"
+    )
+    where += (
+        f" AND `tabDock Event`.`start_datetime` BETWEEN %s AND %s"
+    )
+    params = [start, end]
+
+    if sources:
+        placeholders = ", ".join(["%s"] * len(sources))
+        where += f" AND `tabDock Event`.`source_app` IN ({placeholders})"
+        params.extend(sources)
+
+    if calendars:
+        placeholders = ", ".join(["%s"] * len(calendars))
+        where += f" AND `tabDock Event`.`calendar` IN ({placeholders})"
+        params.extend(calendars)
+
+    return frappe.db.sql(
+        f"""SELECT name, title, start_datetime, end_datetime,
+                   all_day, event_type, color, url, status,
+                   location, meeting_url, calendar,
+                   source_app, source_doctype, source_name, description
+            FROM `tabDock Event`
+            WHERE {where}
+            ORDER BY start_datetime ASC""",
+        params,
+        as_dict=True,
     )
 
 
@@ -49,11 +68,19 @@ def create_event(
     attendees: str = None,
     send_reminder: int = 0,
     reminder_minutes: int = 60,
+    calendar: str = None,
 ) -> dict:
     """
     Creates a native Dock Event (source_app = 'dock') with optional attendees.
     attendees: JSON string of [{user, required}]
+    calendar: Dock Calendar name. If None, uses user's default calendar.
     """
+    # Resolve calendar — ensure user has a default
+    if not calendar:
+        from dock.api.calendars import ensure_default_calendar
+        cal = ensure_default_calendar()
+        calendar = cal.get("name") if isinstance(cal, dict) else cal
+
     doc = frappe.get_doc({
         "doctype": "Dock Event",
         "title": title,
@@ -74,6 +101,7 @@ def create_event(
         "source_name": "pending",
         "url": "",
         "user": frappe.session.user,
+        "calendar": calendar,
     })
 
     # Parse and add attendees
@@ -101,12 +129,13 @@ def update_event(name: str, **fields) -> dict:
     """
     Updates a native Dock Event (source_app = 'dock' only).
     Sourced events are read-only — edit in the source app.
+    Owner or calendar members with Edit/Manage role can update.
     """
     doc = frappe.get_doc("Dock Event", name)
     if doc.source_app != "dock":
         frappe.throw(frappe._("Sourced events can only be edited in the source app."))
-    if doc.user != frappe.session.user:
-        frappe.throw(frappe._("You can only edit your own events."))
+    if not _can_edit_event(doc):
+        frappe.throw(frappe._("You don't have permission to edit this event."))
 
     # Remove internal keys from fields
     fields.pop("cmd", None)
@@ -183,10 +212,11 @@ def update_status(event_name: str, status: str) -> dict:
 def get_event_detail(name: str) -> dict:
     """
     Returns full event details including attendees and app context panels.
+    Visible to event owner and calendar members.
     """
     doc = frappe.get_doc("Dock Event", name)
-    if doc.user != frappe.session.user:
-        frappe.throw(frappe._("You can only view your own events."))
+    if not _can_view_event(doc):
+        frappe.throw(frappe._("You don't have permission to view this event."))
 
     result = doc.as_dict()
 
@@ -226,22 +256,24 @@ def delete_event(name: str) -> dict:
     """
     Deletes a native Dock Event (source_app = 'dock' only).
     Other events are read-only mirrors — users must delete from the source app.
+    Owner or calendar members with Edit/Manage role can delete.
     """
     doc = frappe.get_doc("Dock Event", name)
     if doc.source_app != "dock":
         frappe.throw(frappe._("Only native Dock events can be deleted here."))
-    if doc.user != frappe.session.user:
-        frappe.throw(frappe._("You can only delete your own events."))
+    if not _can_edit_event(doc):
+        frappe.throw(frappe._("You don't have permission to delete this event."))
     doc.delete(ignore_permissions=True)
     return {"deleted": name}
 
 
 @frappe.whitelist()
-def get_calendar_sources() -> list:
+def get_calendar_sources() -> dict:
     """
-    Returns apps that declare dock_calendar_sources, merged with dock_app_registry
-    color and label for sidebar rendering.
-    Each item: { app, label, color, event_label, create_route_template }
+    Returns all calendar sources for the current user:
+    - app_sources: apps that declare dock_calendar_sources
+    - user_calendars: user's own calendars
+    - shared_calendars: calendars shared with the user
     """
     registered = {}
     for app in frappe.get_installed_apps():
@@ -251,19 +283,27 @@ def get_calendar_sources() -> list:
         entry = reg if isinstance(reg, dict) else reg[0]
         registered[app] = {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in entry.items()}
 
-    sources = []
+    app_sources = []
     for app in frappe.get_installed_apps():
         decl = frappe.get_hooks("dock_calendar_sources", app_name=app)
         if decl:
             reg = registered.get(app, {})
-            sources.append({
+            app_sources.append({
                 "app": app,
                 "label": reg.get("label", app),
                 "color": reg.get("color", "#6b7280"),
                 "event_label": decl[0].get("event_label", "Event"),
                 "create_route_template": decl[0].get("create_route_template"),
             })
-    return sources
+
+    from dock.api.calendars import get_calendars
+    cals = get_calendars()
+
+    return {
+        "app_sources": app_sources,
+        "user_calendars": cals.get("user_calendars", []),
+        "shared_calendars": cals.get("shared_calendars", []),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -568,3 +608,44 @@ def _parse_attendees(attendees) -> list:
     if isinstance(attendees, list):
         return attendees
     return []
+
+
+def _can_view_event(doc) -> bool:
+    """Check if current user can view this event."""
+    user = frappe.session.user
+    if doc.user == user:
+        return True
+    if doc.calendar:
+        # Calendar owner or member
+        cal_owner = frappe.db.get_value("Dock Calendar", doc.calendar, "owner_user")
+        if cal_owner == user:
+            return True
+        member = frappe.db.get_value(
+            "Dock Calendar Member",
+            {"parent": doc.calendar, "user": user},
+            "role",
+        )
+        if member:
+            return True
+    return False
+
+
+def _can_edit_event(doc) -> bool:
+    """Check if current user can edit/delete this event."""
+    user = frappe.session.user
+    if doc.user == user:
+        return True
+    if doc.calendar:
+        # Calendar owner can edit
+        cal_owner = frappe.db.get_value("Dock Calendar", doc.calendar, "owner_user")
+        if cal_owner == user:
+            return True
+        # Members with Edit or Manage role can edit
+        member_role = frappe.db.get_value(
+            "Dock Calendar Member",
+            {"parent": doc.calendar, "user": user},
+            "role",
+        )
+        if member_role in ("Edit", "Manage"):
+            return True
+    return False

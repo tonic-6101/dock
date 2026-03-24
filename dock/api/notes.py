@@ -14,9 +14,13 @@ def get_list(
     limit: int = 20,
     offset: int = 0,
     pinned_first: bool = True,
+    color: str = None,
+    tag: str = None,
+    sort_by: str = "modified",
+    sort_order: str = "desc",
 ) -> dict:
     """
-    List notes, optionally filtered by reference.
+    List notes, optionally filtered by reference, color, or tag.
     If no reference given, returns all notes for the current user.
     Returns { items, total }.
     """
@@ -27,6 +31,21 @@ def get_list(
 
     if reference_doctype and reference_name:
         where = where & (N.reference_doctype == reference_doctype) & (N.reference_name == reference_name)
+
+    if color:
+        colors = [c.strip() for c in color.split(",") if c.strip()]
+        if colors:
+            where = where & N.color.isin(colors)
+
+    # Tag filtering uses Frappe's _user_tags column (comma-separated string)
+    if tag:
+        tags = [t.strip() for t in tag.split(",") if t.strip()]
+        for t in tags:
+            where = where & N._user_tags.like(f"%{t}%")
+
+    # Validate sort_by
+    sort_field = N.modified if sort_by == "modified" else N.creation
+    order = Order.asc if sort_order == "asc" else Order.desc
 
     try:
         total_row = (
@@ -46,7 +65,9 @@ def get_list(
                 N.reference_name,
                 N.reference_label,
                 N.pinned,
+                N.color,
                 N.owner,
+                N._user_tags,
                 N.creation,
                 N.modified,
             )
@@ -56,17 +77,21 @@ def get_list(
         )
 
         if pinned_first:
-            q = q.orderby(N.pinned, order=Order.desc).orderby(N.modified, order=Order.desc)
+            q = q.orderby(N.pinned, order=Order.desc).orderby(sort_field, order=order)
         else:
-            q = q.orderby(N.modified, order=Order.desc)
+            q = q.orderby(sort_field, order=order)
 
         items = q.run(as_dict=True)
 
-        # Add owner name for display
+        # Add owner name and parse tags for display
         for item in items:
             item["owner_name"] = frappe.db.get_value("User", item["owner"], "full_name") or item["owner"]
             item["creation"] = str(item["creation"])
             item["modified"] = str(item["modified"])
+            item["color"] = item.get("color") or ""
+            # Parse _user_tags into a clean list
+            raw_tags = item.pop("_user_tags", "") or ""
+            item["tags"] = [t.strip() for t in raw_tags.split(",") if t.strip()]
 
     except Exception:
         frappe.log_error("dock.api.notes.get_list failed")
@@ -80,6 +105,7 @@ def create(
     content: str,
     reference_doctype: str = None,
     reference_name: str = None,
+    color: str = None,
 ) -> dict:
     """
     Create a new note. Optionally linked to a record.
@@ -93,15 +119,17 @@ def create(
     if reference_doctype and reference_name:
         doc.reference_doctype = reference_doctype
         doc.reference_name = reference_name
+    if color:
+        doc.color = color
     doc.insert()
 
     return _format_note(doc)
 
 
 @frappe.whitelist()
-def update(name: str, content: str = None, pinned: int = None) -> dict:
+def update(name: str, content: str = None, pinned: int = None, color: str = None) -> dict:
     """
-    Update a note's content and/or pinned state.
+    Update a note's content, pinned state, and/or color.
     Only the owner can update their notes.
     """
     doc = frappe.get_doc("Dock Note", name)
@@ -111,6 +139,8 @@ def update(name: str, content: str = None, pinned: int = None) -> dict:
         doc.content = content
     if pinned is not None:
         doc.pinned = int(pinned)
+    if color is not None:
+        doc.color = color
     doc.save()
 
     return _format_note(doc)
@@ -150,6 +180,7 @@ def _check_owner(doc):
 
 def _format_note(doc) -> dict:
     """Format a Dock Note doc for API response."""
+    raw_tags = doc.get("_user_tags") or ""
     return {
         "name": doc.name,
         "content": doc.content,
@@ -157,6 +188,8 @@ def _format_note(doc) -> dict:
         "reference_name": doc.reference_name or "",
         "reference_label": doc.reference_label or "",
         "pinned": bool(doc.pinned),
+        "color": doc.color or "",
+        "tags": [t.strip() for t in raw_tags.split(",") if t.strip()],
         "owner": doc.owner,
         "owner_name": frappe.db.get_value("User", doc.owner, "full_name") or doc.owner,
         "creation": str(doc.creation),

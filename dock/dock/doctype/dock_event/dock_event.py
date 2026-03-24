@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import get_datetime, time_diff_in_seconds, add_to_date
+from frappe.utils import get_datetime, add_to_date
 
 
 class DockEvent(Document):
@@ -61,19 +61,69 @@ class DockEvent(Document):
             frappe.log_error(f"Failed to log event activity: {e}")
 
 
+def _get_calendar_member_subquery(user):
+    """SQL subquery: calendars where user is a member."""
+    escaped = frappe.db.escape(user)
+    return (
+        f"SELECT parent FROM `tabDock Calendar Member` WHERE user = {escaped}"
+    )
+
+
 def get_permission_query_conditions(user=None):
     if not user:
         user = frappe.session.user
     if "System Manager" in frappe.get_roles(user):
         return None
-    return f"`tabDock Event`.`user` = {frappe.db.escape(user)}"
+    escaped = frappe.db.escape(user)
+    member_sq = _get_calendar_member_subquery(user)
+    return (
+        f"(`tabDock Event`.`user` = {escaped}"
+        f" OR `tabDock Event`.`calendar` IN ({member_sq}))"
+    )
 
 
 def has_permission(doc, ptype="read", user=None):
     user = user or frappe.session.user
     if "System Manager" in frappe.get_roles(user):
         return True
-    if ptype in ("write", "delete", "create"):
-        # Domain apps write via ignore_permissions — direct writes are blocked
-        return False
-    return doc.user == user
+
+    # Owner always has read access
+    if doc.user == user:
+        if ptype == "read":
+            return True
+        # Write/delete/create for own events — still blocked for direct writes
+        # (domain apps use ignore_permissions)
+        if ptype in ("write", "delete", "create"):
+            return False
+
+    # Calendar membership — read if member, write if Edit/Manage role
+    if doc.calendar:
+        try:
+            members = frappe.get_all(
+                "Dock Calendar Member",
+                filters={"parent": doc.calendar, "user": user},
+                fields=["role"],
+                limit=1,
+            )
+            if members:
+                role = members[0].role
+                if ptype == "read":
+                    return True
+                if ptype == "write" and role in ("Edit", "Manage"):
+                    return True
+        except Exception:
+            pass
+
+    # Calendar owner can read events in their calendars
+    if doc.calendar:
+        try:
+            cal_owner = frappe.db.get_value("Dock Calendar", doc.calendar, "owner_user")
+            if cal_owner == user:
+                if ptype == "read":
+                    return True
+                if ptype in ("write", "delete", "create"):
+                    return False
+        except Exception:
+            pass
+
+    return False

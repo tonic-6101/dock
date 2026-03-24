@@ -22,6 +22,8 @@ def extend_bootinfo(bootinfo):
         "registered_apps": _get_registered_apps(),
         # calendar_sources — seeded at boot to drive sidebar toggles + create picker
         "calendar_sources": _get_calendar_sources(),
+        # user_calendars — owned + shared calendars for sidebar grouping
+        "user_calendars": _get_user_calendars(),
         # notification_types: dict keyed by type for O(1) icon/label resolution
         "notification_types": _get_notification_types(),
         # Bell badge — avoids extra API call on mount
@@ -50,6 +52,9 @@ def extend_bootinfo(bootinfo):
         "activity_sources": _get_activity_sources(),
         # Unread discussions — badge count for discussions nav
         "unread_discussions": _get_unread_discussions_count(),
+        # Note actions — collected from dock_note_actions hooks; drives note context menus
+        "note_actions": _get_note_actions(),
+        "bin_count": _get_bin_count(),
     }
 
 
@@ -68,6 +73,7 @@ def get_boot():
         "settings": merged,
         "registered_apps": _get_registered_apps(),
         "calendar_sources": _get_calendar_sources(),
+        "user_calendars": _get_user_calendars(),
         "notification_types": _get_notification_types(),
         "unread_notifications": frappe.db.count(
             "Dock Notification",
@@ -86,6 +92,8 @@ def get_boot():
         "bridges": _get_bridges(),
         "activity_sources": _get_activity_sources(),
         "unread_discussions": _get_unread_discussions_count(),
+        "note_actions": _get_note_actions(),
+        "bin_count": _get_bin_count(),
     }
 
 
@@ -134,6 +142,17 @@ def _get_calendar_sources():
             "create_route_template": entry.get("create_route_template"),
         })
     return sources
+
+
+def _get_user_calendars():
+    """Returns the current user's owned + shared calendars for sidebar rendering."""
+    try:
+        if not frappe.db.exists("DocType", "Dock Calendar"):
+            return {"user_calendars": [], "shared_calendars": []}
+        from dock.api.calendars import get_calendars
+        return get_calendars()
+    except Exception:
+        return {"user_calendars": [], "shared_calendars": []}
 
 
 _REQUIRED_NOTIFICATION_TYPE_FIELDS = {"type", "label", "icon"}
@@ -451,3 +470,63 @@ def _get_unread_discussions_count():
         return result[0][0] if result else 0
     except Exception:
         return 0
+
+
+_REQUIRED_NOTE_ACTION_FIELDS = {"action", "label", "icon", "handler"}
+
+
+def _get_note_actions():
+    """
+    Collects dock_note_actions from all installed apps.
+    Each app declares actions that can be performed on a Dock Note
+    (e.g. "Convert to Task").
+
+    Shape: [{
+        "action": "convert_to_task",
+        "label": "Convert to Task",
+        "icon": "check-square",
+        "handler": "orga.orga.integrations.dock_notes.convert_to_task",
+        "app": "orga",
+    }, ...]
+    """
+    installed_apps = frappe.get_installed_apps()
+    actions = []
+    for app in installed_apps:
+        for decl in frappe.get_hooks("dock_note_actions", app_name=app):
+            items = decl if isinstance(decl, list) else [decl]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                unwrapped = {
+                    k: v[0] if isinstance(v, list) and len(v) == 1 else v
+                    for k, v in item.items()
+                }
+                missing = _REQUIRED_NOTE_ACTION_FIELDS - set(unwrapped.keys())
+                if missing:
+                    frappe.log_error(
+                        f"dock: {app} dock_note_actions entry missing fields: {missing}",
+                        "Dock Hook Validation",
+                    )
+                    continue
+                actions.append({"app": app, **unwrapped})
+    return actions
+
+
+def _get_bin_count():
+    """Total bin item count across all registered apps."""
+    total = 0
+    for app in frappe.get_installed_apps():
+        for decl in frappe.get_hooks("dock_bin_doctypes", app_name=app):
+            items = decl if isinstance(decl, list) else [decl]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                dt = item.get("doctype")
+                if isinstance(dt, list):
+                    dt = dt[0]
+                if dt and frappe.db.exists("DocType", dt):
+                    try:
+                        total += frappe.db.count(dt, {"deleted": 1})
+                    except Exception:
+                        pass
+    return total

@@ -202,7 +202,7 @@ async function add() {
           <input
             v-model="selectedPerms[perm]"
             type="checkbox"
-            class="w-3.5 h-3.5 rounded accent-[var(--dock-accent)]"
+            class="w-3.5 h-3.5 rounded accent-accent-600"
           />
           <span class="text-sm text-[var(--dock-text)]">
             {{ perm === 'read' ? __('Read') : perm === 'write' ? __('Write') : perm === 'share' ? __('Share') : __('Submit') }}

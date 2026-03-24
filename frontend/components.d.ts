@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     BridgeCard: typeof import('./src/components/integrations/BridgeCard.vue')['default']
+    CreateCalendarPopover: typeof import('./src/components/calendar/CreateCalendarPopover.vue')['default']
     DockActivityFeed: typeof import('./src/components/activity/DockActivityFeed.vue')['default']
     DockActivityRecordFeed: typeof import('./src/components/activity/DockActivityRecordFeed.vue')['default']
     DockAppLabel: typeof import('./src/components/DockAppLabel.vue')['default']
@@ -87,5 +88,6 @@ declare module 'vue' {
     DockTimerStopForm: typeof import('./src/components/timer/DockTimerStopForm.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ShareCalendarModal: typeof import('./src/components/calendar/ShareCalendarModal.vue')['default']
   }
 }

@@ -28,3 +28,6 @@ export type { UseDockSidebarReturn } from './composables/useDockSidebar'
 
 // Shared page route helper (lazy-loaded — zero initial bundle cost)
 export { dockSharedRoutes } from './shared-routes'
+
+// Bin toast composable (domain apps show "Moved to Bin. [Undo]" after deletes)
+export { useBinToast } from './composables/useBinToast'

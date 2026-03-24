@@ -1436,7 +1436,7 @@ onUnmounted(() => {
               <input
                 type="checkbox"
                 :checked="addressForm.is_primary === 1"
-                class="rounded border-[var(--dock-border)]"
+                class="rounded border-[var(--dock-border)] accent-accent-600"
                 @change="addressForm.is_primary = ($event.target as HTMLInputElement).checked ? 1 : 0"
               />
               {{ __('Primary address') }}

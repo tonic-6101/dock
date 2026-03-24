@@ -68,6 +68,14 @@
    This overrides all app accent colors to dock slate values,
    so all apps appear monochrome. App identity relies on icon + label only. */
 
+/* ── Form controls ────────────────────────────────────────── */
+/* Unified accent for checkboxes, radios, range sliders.
+   Uses the app accent so checked state matches the app brand. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--app-accent-600);
+}
+
 :root[data-color-mode="neutral"] {
   --app-accent-50:  #f8fafc;   /* slate-50  */
   --app-accent-100: #f1f5f9;   /* slate-100 */

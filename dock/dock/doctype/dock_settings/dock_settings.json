@@ -24,6 +24,9 @@
   "section_advanced",
   "frappe_manager_url",
   "sync_log_retention_days",
+  "section_bin",
+  "bin_retention_days",
+  "auto_purge_enabled",
   "app_order"
  ],
  "fields": [
@@ -144,6 +147,25 @@
    "label": "Sync Log Retention (days)",
    "default": "90",
    "description": "Days to keep Dock Sync Log entries before scheduled cleanup. 0 = keep forever."
+  },
+  {
+   "fieldname": "section_bin",
+   "fieldtype": "Section Break",
+   "label": "Bin"
+  },
+  {
+   "fieldname": "bin_retention_days",
+   "fieldtype": "Int",
+   "label": "Bin Retention (days)",
+   "default": "30",
+   "description": "Days to keep deleted items before auto-purge. 0 = keep forever."
+  },
+  {
+   "fieldname": "auto_purge_enabled",
+   "fieldtype": "Check",
+   "label": "Auto-Purge Enabled",
+   "default": "1",
+   "description": "Automatically delete expired bin items daily"
   },
   {
    "fieldname": "app_order",

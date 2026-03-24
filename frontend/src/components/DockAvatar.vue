@@ -3,12 +3,16 @@
   Copyright (C) 2024-2026 Tonic
 
   Avatar button + account menu dropdown.
+  All Section 2 links are context-aware: they resolve to /{currentApp}/... based on
+  the active app detected from window.location.pathname. Fallback: /dock/...
   Structure:
     [Avatar] Name / email
     ────────────────────
-    My Account  → /dock/account
-    Preferences → /dock/settings
-    Bookmarks   → /dock/bookmarks
+    My Account  → /{app}/account
+    Preferences → /{app}/settings
+    Bookmarks   → /{app}/bookmarks
+    Notes       → /{app}/notes
+    Activity    → /{app}/activity
     ────────────────────
     Time  (if watch)
     Guest Portal  (if privileged)
@@ -24,35 +28,46 @@ export default { name: 'DockAvatar' }
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
-  UserCircle2, User, SlidersHorizontal, Bookmark, StickyNote, Activity, Clock, DoorOpen,
+  UserCircle2, User, SlidersHorizontal, Bookmark, StickyNote, Activity, Trash2, Clock, DoorOpen,
   Settings, LogOut,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { useTheme } from '@/composables/useTheme'
+import { useColorMode } from '@/composables/useColorMode'
 import { useDropdownExclusion } from '@/composables/useDropdownExclusion'
 import { useDockBoot } from '@/composables/useDockBoot'
 
 const { theme, setTheme } = useTheme()
+const { colorMode, setColorMode } = useColorMode()
 const { registeredApps } = useDockBoot()
 
-// Context-aware Activity URL — navigates to /orga/activity when in Orga, /dock/activity as fallback
-const activityUrl = computed(() => {
+// Context-aware app prefix — resolves to /orga when in Orga, /watch when in Watch, /dock as fallback
+const appPrefix = computed(() => {
   const path = window.location.pathname
   type App = { route: string }
   const active = (registeredApps.value as App[]).find(a =>
     a.route !== '/dock' && path.startsWith(a.route)
   )
-  return active ? `${active.route}/activity` : '/dock/activity'
+  return active ? active.route : '/dock'
 })
 
-const notesUrl = computed(() => {
-  const path = window.location.pathname
-  type App = { route: string }
-  const active = (registeredApps.value as App[]).find(a =>
-    a.route !== '/dock' && path.startsWith(a.route)
-  )
-  return active ? `${active.route}/notes` : '/dock/notes'
+const accountUrl = computed(() => `${appPrefix.value}/account`)
+const settingsUrl = computed(() => {
+  const prefix = appPrefix.value
+  // Domain apps route to /dock/settings/app/{appRoute} (the unified settings hub)
+  // Dock itself routes to /dock/settings
+  if (prefix !== '/dock') {
+    const appRoute = prefix.replace(/^\//, '')
+    return `/dock/settings/app/${appRoute}`
+  }
+  return '/dock/settings'
 })
+const bookmarksUrl = computed(() => `${appPrefix.value}/bookmarks`)
+const notesUrl = computed(() => `${appPrefix.value}/notes`)
+const activityUrl = computed(() => `${appPrefix.value}/activity`)
+const binUrl = computed(() => `${appPrefix.value}/bin`)
+
+const binCount = computed(() => (boot as any).dock?.bin_count || 0)
 
 const triggerRef  = ref<HTMLButtonElement | null>(null)
 const wrapperRef  = ref<HTMLElement | null>(null)
@@ -105,6 +120,12 @@ const themeOptions = [
   { value: 'system' as const, label: __('System') },
   { value: 'light'  as const, label: __('Light')  },
   { value: 'dark'   as const, label: __('Dark')   },
+]
+
+// Color mode options
+const colorModeOptions = [
+  { value: 'branded' as const, label: __('Branded') },
+  { value: 'neutral' as const, label: __('Neutral') },
 ]
 
 // Close on outside click or Escape
@@ -185,7 +206,7 @@ onUnmounted(() => {
         <!-- § 2 — Core nav -->
         <div class="py-1 border-b border-[var(--dock-border)]">
           <a
-            href="/dock/account"
+            :href="accountUrl"
             role="menuitem"
             class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
                    hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
@@ -195,7 +216,7 @@ onUnmounted(() => {
             {{ __('My Account') }}
           </a>
           <a
-            href="/dock/settings"
+            :href="settingsUrl"
             role="menuitem"
             class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
                    hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
@@ -205,7 +226,7 @@ onUnmounted(() => {
             {{ __('Preferences') }}
           </a>
           <a
-            href="/dock/bookmarks"
+            :href="bookmarksUrl"
             role="menuitem"
             class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
                    hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
@@ -233,6 +254,23 @@ onUnmounted(() => {
           >
             <Activity class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
             {{ __('Activity') }}
+          </a>
+          <a
+            :href="binUrl"
+            role="menuitem"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--dock-text)]
+                   hover:bg-black/5 dark:hover:bg-white/10 transition-colors no-underline"
+            @click="close"
+          >
+            <Trash2 class="w-4 h-4 text-[var(--dock-icon)]" aria-hidden="true" />
+            {{ __('Bin') }}
+            <span
+              v-if="binCount > 0"
+              class="ml-auto text-xs text-[var(--dock-icon)] bg-black/5 dark:bg-white/10
+                     rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center"
+            >
+              {{ binCount }}
+            </span>
           </a>
         </div>
 
@@ -285,6 +323,32 @@ onUnmounted(() => {
               role="radio"
               :aria-checked="theme === opt.value"
               @click="setTheme(opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+
+          <!-- Color mode toggle -->
+          <div class="flex items-center gap-2 mt-3 mb-1">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              {{ __('Colors') }}
+            </span>
+          </div>
+          <div
+            class="flex gap-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1"
+            role="radiogroup"
+            :aria-label="__('Color mode')"
+          >
+            <button
+              v-for="opt in colorModeOptions"
+              :key="opt.value"
+              class="flex-1 px-3 py-1.5 text-xs font-medium rounded transition-colors"
+              :class="colorMode === opt.value
+                ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'"
+              role="radio"
+              :aria-checked="colorMode === opt.value"
+              @click="setColorMode(opt.value)"
             >
               {{ opt.label }}
             </button>

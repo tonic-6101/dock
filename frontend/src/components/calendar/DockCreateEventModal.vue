@@ -13,11 +13,12 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { X, Loader2, Search, UserPlus, UserMinus } from 'lucide-vue-next'
 import { callApi } from '@/composables/useApi'
 import { __ } from '@/composables/useTranslate'
-import type { DockEvent } from '@/types/dock'
+import type { DockEvent, DockCalendar } from '@/types/dock'
 
 interface Props {
   show: boolean
   initialDate?: Date | null
+  calendars?: DockCalendar[]
 }
 
 interface AttendeeEntry {
@@ -28,6 +29,7 @@ interface AttendeeEntry {
 
 interface EventForm {
   title: string
+  calendar: string
   event_type: string
   all_day: boolean
   start_datetime: string
@@ -41,7 +43,10 @@ interface EventForm {
 const props = withDefaults(defineProps<Props>(), {
   show: false,
   initialDate: null,
+  calendars: () => [],
 })
+
+const defaultCalendar = computed(() => props.calendars.find(c => c.is_default) ?? props.calendars[0] ?? null)
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -52,6 +57,7 @@ const EVENT_TYPES = ['Meeting', 'Deadline', 'Review', 'Milestone', 'Other']
 
 const form = ref<EventForm>({
   title: '',
+  calendar: '',
   event_type: 'Meeting',
   all_day: false,
   start_datetime: '',
@@ -87,7 +93,7 @@ function resetDates() {
 
 function resetForm() {
   form.value = {
-    title: '', event_type: 'Meeting', all_day: false,
+    title: '', calendar: defaultCalendar.value?.name ?? '', event_type: 'Meeting', all_day: false,
     start_datetime: '', end_datetime: '',
     location: '', meeting_url: '', description: '', attendees: [],
   }
@@ -97,7 +103,14 @@ function resetForm() {
   attendeeResults.value = []
 }
 
-watch(() => props.show, (val) => { if (val) resetDates() })
+watch(() => props.show, (val) => {
+  if (val) {
+    resetDates()
+    if (!form.value.calendar && defaultCalendar.value) {
+      form.value.calendar = defaultCalendar.value.name
+    }
+  }
+})
 
 // Keep end ≥ start + 1h when start changes
 watch(() => form.value.start_datetime, (newStart, oldStart) => {
@@ -173,6 +186,7 @@ async function handleSubmit() {
       description: form.value.description || null,
       location: form.value.location || null,
       meeting_url: form.value.meeting_url || null,
+      calendar: form.value.calendar || null,
       attendees: JSON.stringify(form.value.attendees.map(a => ({
         user: a.user,
         required: a.required ? 1 : 0,
@@ -232,6 +246,30 @@ function handleClose() {
 
           <div class="space-y-4">
 
+            <!-- Calendar picker -->
+            <div v-if="calendars.length > 1">
+              <label class="block text-xs font-medium text-[var(--dock-icon)] mb-1">{{ __('Calendar') }}</label>
+              <div class="relative">
+                <span
+                  v-if="form.calendar"
+                  class="absolute left-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full shrink-0"
+                  :style="{ backgroundColor: calendars.find(c => c.name === form.calendar)?.color ?? '#6366f1' }"
+                />
+                <select
+                  v-model="form.calendar"
+                  class="w-full py-2 rounded-lg text-sm
+                         border border-[var(--dock-border)] bg-[var(--dock-bg)]
+                         text-[var(--dock-text)]
+                         focus:outline-none focus:border-[var(--dock-icon)]"
+                  :class="form.calendar ? 'pl-7 pr-3' : 'px-3'"
+                >
+                  <option v-for="cal in calendars" :key="cal.name" :value="cal.name">
+                    {{ cal.title }}{{ cal.owner_name ? ` (${cal.owner_name})` : '' }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
             <!-- Title -->
             <div>
               <label class="block text-xs font-medium text-[var(--dock-icon)] mb-1">
@@ -268,7 +306,7 @@ function handleClose() {
                   <input
                     v-model="form.all_day"
                     type="checkbox"
-                    class="w-4 h-4 rounded border-[var(--dock-border)] accent-[var(--dock-icon)]"
+                    class="w-4 h-4 rounded border-[var(--dock-border)] accent-accent-600"
                   />
                   <span class="text-sm text-[var(--dock-text)]">{{ __('All day event') }}</span>
                 </label>

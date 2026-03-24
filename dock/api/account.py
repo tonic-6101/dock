@@ -66,21 +66,26 @@ def get_sessions() -> list[dict]:
     user = frappe.session.user
     current_sid = frappe.session.sid
 
-    sessions = frappe.db.get_all(
-        "Sessions",
-        filters={"user": user, "status": "Active"},
-        fields=["sid", "device", "ip_address", "last_updated"],
-        order_by="last_updated desc",
-        limit=20,
+    # Sessions is a raw table (not a registered DocType), so use SQL directly.
+    sessions = frappe.db.sql(
+        """
+        SELECT sid, ipaddress, lastupdate, status
+        FROM tabSessions
+        WHERE user = %s AND status = 'Active'
+        ORDER BY lastupdate DESC
+        LIMIT 20
+        """,
+        (user,),
+        as_dict=True,
     )
 
     result = []
     for s in sessions:
         result.append({
             "sid": s.sid,
-            "device": s.get("device") or "",
-            "ip_address": _mask_ip(s.get("ip_address") or ""),
-            "last_updated": str(s.last_updated) if s.last_updated else "",
+            "device": "",
+            "ip_address": _mask_ip(s.get("ipaddress") or ""),
+            "last_updated": str(s.lastupdate) if s.lastupdate else "",
             "is_current": s.sid == current_sid,
         })
     return result
@@ -94,14 +99,24 @@ def revoke_session(sid: str) -> dict:
     if sid == frappe.session.sid:
         frappe.throw(_("Cannot revoke your current session"))
 
-    # Verify the session belongs to this user
-    session_user = frappe.db.get_value("Sessions", sid, "user")
-    if session_user != user:
+    # Verify the session belongs to this user (Sessions is a raw table)
+    session_user = frappe.db.sql(
+        "SELECT user FROM tabSessions WHERE sid = %s", (sid,), as_dict=True
+    )
+    if not session_user or session_user[0].user != user:
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-    frappe.db.delete("Sessions", {"sid": sid})
+    frappe.db.sql("DELETE FROM tabSessions WHERE sid = %s", (sid,))
     frappe.db.commit()
     return {"success": True}
+
+
+@frappe.whitelist()
+def set_user_image(file_url: str) -> dict:
+    """Set the current user's profile image after upload."""
+    user = frappe.session.user
+    frappe.db.set_value("User", user, "user_image", file_url)
+    return {"success": True, "user_image": file_url}
 
 
 @frappe.whitelist()

@@ -26,6 +26,18 @@ export function dockSharedRoutes(prefix: string = ''): RouteRecordRaw[] {
 
   return [
     {
+      path: `${p}/account`,
+      name: 'dock-account',
+      component: () => import('./pages/DockAccountPage.vue'),
+      meta: { dockShared: true, title: 'My Account' },
+    },
+    {
+      path: `${p}/bin`,
+      name: 'dock-bin',
+      component: () => import('./pages/DockBinPage.vue'),
+      meta: { dockShared: true, title: 'Bin' },
+    },
+    {
       path: `${p}/people`,
       name: 'dock-people',
       component: () => import('./pages/DockPeoplePage.vue'),

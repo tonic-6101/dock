@@ -141,8 +141,11 @@ async function onFileSelected(event: Event) {
 
     const json = await res.json()
     if (res.ok && json.message?.file_url) {
+      const fileUrl = json.message.file_url
+      // Persist the image URL on the User doc
+      await callApi('dock.api.account.set_user_image', { file_url: fileUrl })
       if (account.value) {
-        account.value.user_image = json.message.file_url
+        account.value.user_image = fileUrl
       }
     }
   } finally {
@@ -319,7 +322,7 @@ function formatSessionTime(ts: string): string {
 
         <div class="flex items-center gap-3">
           <button
-            class="px-4 py-1.5 text-sm font-medium rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+            class="px-4 py-1.5 text-sm font-medium rounded-lg bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900 hover:bg-accent-700 dark:hover:bg-accent-300 transition-colors disabled:opacity-50"
             :disabled="profileSaving"
             @click="saveProfile"
           >
@@ -391,7 +394,7 @@ function formatSessionTime(ts: string): string {
 
           <div class="flex items-center gap-3">
             <button
-              class="px-4 py-1.5 text-sm font-medium rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+              class="px-4 py-1.5 text-sm font-medium rounded-lg bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900 hover:bg-accent-700 dark:hover:bg-accent-300 transition-colors disabled:opacity-50"
               :disabled="passwordSaving || !oldPassword || !newPassword"
               @click="changePassword"
             >

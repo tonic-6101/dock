@@ -43,6 +43,7 @@ permission_query_conditions = {
     "Dock Recent Item":    "dock.dock.doctype.dock_recent_item.dock_recent_item.get_permission_query_conditions",
     "Dock Bookmark":       "dock.dock.doctype.dock_bookmark.dock_bookmark.get_permission_query_conditions",
     "Dock Event":          "dock.dock.doctype.dock_event.dock_event.get_permission_query_conditions",
+    "Dock Calendar":       "dock.dock.doctype.dock_calendar.dock_calendar.get_permission_query_conditions",
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.get_permission_query_conditions",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.get_permission_query_conditions",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.get_permission_query_conditions",
@@ -58,6 +59,7 @@ has_permission = {
     "Dock Recent Item":    "dock.dock.doctype.dock_recent_item.dock_recent_item.has_permission",
     "Dock Bookmark":       "dock.dock.doctype.dock_bookmark.dock_bookmark.has_permission",
     "Dock Event":          "dock.dock.doctype.dock_event.dock_event.has_permission",
+    "Dock Calendar":       "dock.dock.doctype.dock_calendar.dock_calendar.has_permission",
     "Dock Guest Session":  "dock.dock.doctype.dock_guest_session.dock_guest_session.has_permission",
     "Dock Guest Activity": "dock.dock.doctype.dock_guest_activity.dock_guest_activity.has_permission",
     "Dock Note":           "dock.dock.doctype.dock_note.dock_note.has_permission",
@@ -72,6 +74,7 @@ scheduler_events = {
     "daily": [
         "dock.tasks.cleanup_old_notifications",
         "dock.dock.doctype.dock_sync_log.dock_sync_log.cleanup_old_sync_logs",
+        "dock.tasks.auto_purge_bin",
     ],
     "cron": {
         # Send event reminders every 15 minutes
@@ -110,6 +113,14 @@ dock_search_sections = [
         "search_fields": ["title"],
         "display_field": "title",
         "route_template": "/dock/discussions/{name}",
+    },
+    {
+        "label": "Notes",
+        "doctype": "Dock Note",
+        "search_fields": ["content", "reference_label"],
+        "display_field": "content",
+        "route_template": "/dock/notes",
+        "description_field": "reference_label",
     },
 ]
 

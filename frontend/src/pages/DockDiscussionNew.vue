@@ -94,7 +94,7 @@ async function handleSubmit() {
           :key="t.value"
           class="text-xs px-3 py-1.5 rounded-md transition-colors"
           :class="discussionType === t.value
-            ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+            ? 'bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900'
             : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
           @click="discussionType = t.value; onTypeChange()"
         >
@@ -134,7 +134,7 @@ async function handleSubmit() {
           {{ __('Cancel') }}
         </button>
         <button
-          class="text-sm px-4 py-2 rounded-md bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:opacity-50 transition-colors"
+          class="text-sm px-4 py-2 rounded-md bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900 hover:bg-accent-700 dark:hover:bg-accent-300 disabled:opacity-50 transition-colors"
           :disabled="!title.trim() || !content.trim() || submitting"
           @click="handleSubmit"
         >

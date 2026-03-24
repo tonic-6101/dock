@@ -172,17 +172,17 @@ async function save() {
       <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Features') }}</p>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <input v-model="timerEnabled" type="checkbox" class="w-4 h-4 rounded accent-gray-900" />
+        <input v-model="timerEnabled" type="checkbox" class="w-4 h-4 rounded accent-accent-600" />
         <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Enable global timer') }}</span>
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <input v-model="bookmarks" type="checkbox" class="w-4 h-4 rounded accent-gray-900" />
+        <input v-model="bookmarks" type="checkbox" class="w-4 h-4 rounded accent-accent-600" />
         <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Enable bookmarks') }}</span>
       </label>
 
       <label class="flex items-center gap-3 cursor-pointer">
-        <input v-model="recentItems" type="checkbox" class="w-4 h-4 rounded accent-gray-900" />
+        <input v-model="recentItems" type="checkbox" class="w-4 h-4 rounded accent-accent-600" />
         <span class="text-sm text-gray-700 dark:text-gray-300">{{ __('Enable recent items') }}</span>
       </label>
 
@@ -201,7 +201,7 @@ async function save() {
     <!-- Save -->
     <div class="flex items-center gap-3 pt-2">
       <button
-        class="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-medium hover:bg-gray-700 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+        class="px-4 py-2 rounded-lg bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900 text-sm font-medium hover:bg-accent-700 dark:hover:bg-accent-300 transition-colors disabled:opacity-50"
         :disabled="saving"
         @click="save"
       >

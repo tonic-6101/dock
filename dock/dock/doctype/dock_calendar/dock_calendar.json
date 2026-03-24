@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-03-24 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "color",
+  "description",
+  "owner_user",
+  "is_default",
+  "section_members",
+  "members"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Color",
+   "description": "Hex color for calendar display"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "owner_user",
+   "fieldtype": "Link",
+   "label": "Owner",
+   "options": "User",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Default Calendar",
+   "default": "0"
+  },
+  {
+   "fieldname": "section_members",
+   "fieldtype": "Section Break",
+   "label": "Shared With"
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "Dock Calendar Member"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock Calendar",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "export": 0,
+   "print": 0,
+   "read": 1,
+   "report": 0,
+   "role": "Dock User",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "title",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 0
+}

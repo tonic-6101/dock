@@ -50,3 +50,67 @@ def cleanup_old_notifications():
         names = [n.name for n in excess]
         if names:
             frappe.db.delete("Dock Notification", {"name": ["in", names]})
+
+
+def auto_purge_bin():
+    """
+    Daily task: permanently delete bin items past the configured retention period.
+    Calls each app's registered delete_endpoint via dock_bin_doctypes hooks.
+    """
+    if not frappe.db.exists("DocType", "Dock Settings"):
+        return
+
+    auto_purge = frappe.db.get_single_value("Dock Settings", "auto_purge_enabled")
+    if not auto_purge:
+        return
+
+    retention_days = int(
+        frappe.db.get_single_value("Dock Settings", "bin_retention_days") or 30
+    )
+    cutoff = frappe.utils.add_days(frappe.utils.now(), -retention_days)
+
+    total_purged = 0
+    for app in frappe.get_installed_apps():
+        for decl in frappe.get_hooks("dock_bin_doctypes", app_name=app):
+            items = decl if isinstance(decl, list) else [decl]
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                dt = item.get("doctype")
+                if isinstance(dt, list):
+                    dt = dt[0]
+                delete_endpoint = item.get("delete_endpoint")
+                if isinstance(delete_endpoint, list):
+                    delete_endpoint = delete_endpoint[0]
+                if not dt or not delete_endpoint or not frappe.db.exists("DocType", dt):
+                    continue
+                expired = frappe.get_all(
+                    dt,
+                    filters={"deleted": 1, "deleted_on": ["<", cutoff]},
+                    pluck="name",
+                )
+                if not expired:
+                    continue
+                try:
+                    # Detect the right param name for the endpoint
+                    import inspect
+                    parts = delete_endpoint.rsplit(".", 1)
+                    mod = frappe.get_module(parts[0])
+                    func = getattr(mod, parts[1])
+                    sig = inspect.signature(func)
+                    param_name = "names"
+                    for p in sig.parameters:
+                        if p != "self":
+                            param_name = p
+                            break
+                    result = frappe.call(delete_endpoint, **{param_name: expired})
+                    count = (result or {}).get("deleted", len(expired))
+                    total_purged += count
+                except Exception as e:
+                    frappe.log_error(
+                        f"dock: auto_purge_bin failed for {dt}: {e}",
+                        "Dock Bin Auto-Purge",
+                    )
+
+    if total_purged > 0:
+        frappe.logger().info(f"Dock bin auto-purge: {total_purged} item(s) permanently deleted.")

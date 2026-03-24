@@ -11,6 +11,7 @@ export interface DockSettings {
   currency: string
   numberFormat: string
   theme: 'light' | 'dark' | 'system'
+  colorMode: 'branded' | 'neutral'
   enableGlobalTimer: boolean
   enableBookmarks: boolean
   enableRecentItems: boolean
@@ -35,6 +36,7 @@ export function useDockSettings() {
     currency:          (s.value?.currency          as string)  ?? 'EUR',
     numberFormat:      (s.value?.number_format     as string)  ?? '#.###,##',
     theme:             (s.value?.theme             as 'light' | 'dark' | 'system') ?? 'system',
+    colorMode:         (s.value?.color_mode        as 'branded' | 'neutral') ?? 'branded',
     enableGlobalTimer: (s.value?.enable_global_timer as boolean) ?? true,
     enableBookmarks:   (s.value?.enable_bookmarks   as boolean) ?? true,
     enableRecentItems: (s.value?.enable_recent_items as boolean) ?? true,

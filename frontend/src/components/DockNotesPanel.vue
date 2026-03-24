@@ -16,15 +16,25 @@ export default { name: 'DockNotesPanel' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Pin, Pencil, Trash2, StickyNote } from 'lucide-vue-next'
+import { Pin, Pencil, Trash2, StickyNote, X, Tag, ImagePlus, SquareArrowOutUpRight, Palette } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
+import { uploadFile, pickFiles } from '@/composables/useFileUpload'
 import { useDockBoot } from '@/composables/useDockBoot'
 import { useDockPanels } from '@/composables/useDockPanels'
 import DockPanelShell from './DockPanelShell.vue'
 
 const { closePanel } = useDockPanels()
-const { registeredApps } = useDockBoot()
+const { registeredApps, noteActions } = useDockBoot()
+
+const NOTE_COLORS: Record<string, string> = {
+  yellow: '#eab308',
+  green: '#22c55e',
+  blue: '#3b82f6',
+  purple: '#a855f7',
+  red: '#ef4444',
+  orange: '#f97316',
+}
 
 interface Note {
   name: string
@@ -33,6 +43,8 @@ interface Note {
   reference_name: string
   reference_label: string
   pinned: boolean
+  color: string
+  tags: string[]
   owner_name: string
   creation: string
   modified: string
@@ -44,25 +56,33 @@ const notes = ref<Note[]>([])
 const total = ref(0)
 const loading = ref(false)
 const newContent = ref('')
+const newColor = ref('')
+const showNewColorPicker = ref(false)
 const saving = ref(false)
 
 // ── Context detection ──────────────────────────────────
 
-// Detect the current record from the URL (e.g. /orga/projects/PROJ-001)
 const currentContext = computed(() => {
   const path = window.location.pathname
-  // Match /{app}/{doctype-slug}/{name} pattern
   const match = path.match(/^\/([^/]+)\/([^/]+)\/([^/]+)$/)
   if (!match) return null
-  const [, app, , docname] = match
+  const [, app, slug, docname] = match
   if (app === 'dock' || app === 'app' || app === 'api') return null
-  return { app, docname: decodeURIComponent(docname) }
+  // Convert slug to DocType-like name (e.g. "projects" → detect from meta)
+  return { app, slug, docname: decodeURIComponent(docname) }
 })
 
 const contextLabel = computed(() => {
   if (!currentContext.value) return null
   return currentContext.value.docname
 })
+
+// Whether user wants the context link (opt-out dismissable)
+const includeContext = ref(true)
+
+// Pending image attachments (uploaded before note is saved)
+const pendingImages = ref<{ url: string; name: string }[]>([])
+const uploadingImage = ref(false)
 
 // Full-page link — context-aware
 const notesPageUrl = computed(() => {
@@ -73,6 +93,49 @@ const notesPageUrl = computed(() => {
   )
   return active ? `${active.route}/notes` : '/dock/notes'
 })
+
+// ── Tag input state ────────────────────────────────────
+
+const addingTagFor = ref<string | null>(null)
+const tagInput = ref('')
+
+// ── Image handling ─────────────────────────────────────
+
+async function attachImage() {
+  const files = await pickFiles('image/*')
+  for (const file of files) {
+    await doUpload(file)
+  }
+}
+
+async function doUpload(file: File) {
+  uploadingImage.value = true
+  try {
+    const url = await uploadFile(file)
+    if (url) {
+      pendingImages.value.push({ url, name: file.name })
+    }
+  } finally {
+    uploadingImage.value = false
+  }
+}
+
+function removePendingImage(url: string) {
+  pendingImages.value = pendingImages.value.filter(i => i.url !== url)
+}
+
+function onPaste(e: ClipboardEvent) {
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (const item of Array.from(items)) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault()
+      const file = item.getAsFile()
+      if (file) doUpload(file)
+      return
+    }
+  }
+}
 
 // ── API calls ──────────────────────────────────────────
 
@@ -93,15 +156,32 @@ async function load() {
 }
 
 async function createNote() {
-  if (!newContent.value.trim() || saving.value) return
+  if ((!newContent.value.trim() && !pendingImages.value.length) || saving.value) return
   saving.value = true
   try {
-    const note = await callApi<Note>('dock.api.notes.create', {
-      content: newContent.value.trim(),
-    })
+    // Build content: text + images
+    let content = newContent.value.trim()
+    if (pendingImages.value.length) {
+      const imgHtml = pendingImages.value
+        .map(img => `<img src="${img.url}" alt="${img.name}" />`)
+        .join('')
+      content = content ? `<p>${content}</p>${imgHtml}` : imgHtml
+    }
+
+    const params: Record<string, string> = { content }
+    if (newColor.value) params.color = newColor.value
+    // Pass context if detected and user hasn't dismissed it
+    if (includeContext.value && currentContext.value) {
+      params.reference_name = currentContext.value.docname
+    }
+    const note = await callApi<Note>('dock.api.notes.create', params)
     notes.value.unshift(note)
     total.value++
     newContent.value = ''
+    newColor.value = ''
+    showNewColorPicker.value = false
+    pendingImages.value = []
+    includeContext.value = true
   } finally {
     saving.value = false
   }
@@ -125,7 +205,7 @@ const editContent = ref('')
 
 function startEdit(note: Note) {
   editingName.value = note.name
-  // Strip HTML tags for plain text editing
+  // Strip HTML tags for plain text editing in panel
   editContent.value = note.content.replace(/<[^>]*>/g, '').trim()
 }
 
@@ -175,11 +255,136 @@ async function deleteNote(name: string) {
   }
 }
 
+// ── Tags ───────────────────────────────────────────────
+
+function startAddTag(name: string) {
+  addingTagFor.value = name
+  tagInput.value = ''
+}
+
+function cancelAddTag() {
+  addingTagFor.value = null
+  tagInput.value = ''
+}
+
+async function addTag(noteName: string) {
+  const value = tagInput.value.trim()
+  if (!value) return
+  const note = notes.value.find(n => n.name === noteName)
+  if (!note) return
+  if (note.tags.includes(value)) { cancelAddTag(); return }
+
+  note.tags.push(value)
+  cancelAddTag()
+  try {
+    await callApi('frappe.client.add_tag', { tag: value, dt: 'Dock Note', dn: noteName })
+  } catch {
+    note.tags = note.tags.filter(t => t !== value)
+  }
+}
+
+async function removeTag(noteName: string, tag: string) {
+  const note = notes.value.find(n => n.name === noteName)
+  if (!note) return
+  note.tags = note.tags.filter(t => t !== tag)
+  try {
+    await callApi('frappe.client.remove_tag', { tag, dt: 'Dock Note', dn: noteName })
+  } catch {
+    note.tags.push(tag)
+  }
+}
+
+function onTagKeydown(e: KeyboardEvent, noteName: string) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    addTag(noteName)
+  }
+  if (e.key === 'Escape') {
+    cancelAddTag()
+  }
+}
+
+// ── Note actions (hook-driven) ────────────────────────
+
+const actionRunning = ref<string | null>(null)
+const confirmActionFor = ref<string | null>(null)
+const pendingAction = ref<{ handler: string; label: string } | null>(null)
+const actionSuccess = ref<{ noteName: string; message: string } | null>(null)
+
+function promptNoteAction(action: { handler: string; label: string }, noteName: string) {
+  confirmActionFor.value = noteName
+  pendingAction.value = action
+}
+
+function cancelNoteAction() {
+  confirmActionFor.value = null
+  pendingAction.value = null
+}
+
+async function confirmNoteAction() {
+  if (!confirmActionFor.value || !pendingAction.value || actionRunning.value) return
+  const noteName = confirmActionFor.value
+  const action = pendingAction.value
+  actionRunning.value = noteName
+  confirmActionFor.value = null
+  pendingAction.value = null
+  try {
+    const result = await callApi<{ success: boolean; message?: string; route?: string }>(
+      action.handler, { note_name: noteName },
+    )
+    if (result?.message) {
+      actionSuccess.value = { noteName, message: result.message }
+      setTimeout(() => { actionSuccess.value = null }, 3000)
+      load()
+    }
+  } finally {
+    actionRunning.value = null
+  }
+}
+
+// ── Color on existing notes ────────────────────────────
+
+const colorPickerFor = ref<string | null>(null)
+
+function toggleColorPicker(name: string) {
+  colorPickerFor.value = colorPickerFor.value === name ? null : name
+}
+
+async function setNoteColor(noteName: string, color: string) {
+  const note = notes.value.find(n => n.name === noteName)
+  if (!note) return
+  const old = note.color
+  note.color = color
+  colorPickerFor.value = null
+  try {
+    await callApi('dock.api.notes.update', { name: noteName, color })
+  } catch {
+    note.color = old
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────
+
+function onNoteContentClick(e: MouseEvent, note: Note) {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'IMG') {
+    // Open full image in new tab instead of editing
+    const src = (target as HTMLImageElement).src
+    if (src) window.open(src, '_blank')
+    return
+  }
+  startEdit(note)
+}
+
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault()
     createNote()
   }
+}
+
+function colorBorder(color: string): string {
+  return NOTE_COLORS[color] || 'transparent'
 }
 
 function relativeTime(timestamp: string): string {
@@ -233,7 +438,111 @@ onMounted(load)
           outline: 'none',
         }"
         @keydown="onKeydown"
+        @paste="onPaste"
       />
+
+      <!-- Pending image previews -->
+      <div
+        v-if="pendingImages.length"
+        :style="{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.375rem',
+          marginTop: '0.375rem',
+        }"
+      >
+        <div
+          v-for="img in pendingImages"
+          :key="img.url"
+          :style="{
+            position: 'relative',
+            width: '3.5rem',
+            height: '3.5rem',
+            borderRadius: '0.375rem',
+            overflow: 'hidden',
+            border: '1px solid var(--dock-border)',
+          }"
+        >
+          <img
+            :src="img.url"
+            :alt="img.name"
+            :style="{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }"
+          />
+          <button
+            :style="{
+              position: 'absolute',
+              top: '0.125rem',
+              right: '0.125rem',
+              width: '1rem',
+              height: '1rem',
+              borderRadius: '50%',
+              background: 'rgba(0,0,0,0.6)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0',
+            }"
+            @click="removePendingImage(img.url)"
+          >
+            <X :style="{ width: '0.5rem', height: '0.5rem' }" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Uploading indicator -->
+      <div
+        v-if="uploadingImage"
+        :style="{
+          marginTop: '0.25rem',
+          fontSize: '0.6875rem',
+          color: 'var(--dock-icon)',
+        }"
+      >
+        {{ __('Uploading image...') }}
+      </div>
+
+      <!-- Context chip (opt-out) -->
+      <div
+        v-if="contextLabel && includeContext"
+        :style="{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          marginTop: '0.375rem',
+          padding: '0.125rem 0.5rem',
+          fontSize: '0.6875rem',
+          color: 'var(--dock-accent, #6366f1)',
+          background: 'var(--dock-accent, #6366f1)',
+          backgroundColor: 'color-mix(in srgb, var(--dock-accent, #6366f1) 8%, transparent)',
+          borderRadius: '0.25rem',
+          width: 'fit-content',
+        }"
+      >
+        <span>📌 {{ contextLabel }}</span>
+        <button
+          :style="{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'none',
+            border: 'none',
+            padding: '0.125rem',
+            cursor: 'pointer',
+            color: 'var(--dock-accent, #6366f1)',
+          }"
+          :title="__('Remove link')"
+          @click="includeContext = false"
+        >
+          <X :style="{ width: '0.625rem', height: '0.625rem' }" />
+        </button>
+      </div>
+
       <div
         :style="{
           display: 'flex',
@@ -242,11 +551,90 @@ onMounted(load)
           marginTop: '0.375rem',
         }"
       >
-        <span :style="{ fontSize: '0.6875rem', color: 'var(--dock-icon)' }">
-          {{ __('Ctrl+Enter to save') }}
-        </span>
+        <div :style="{ display: 'flex', alignItems: 'center', gap: '0.5rem' }">
+          <!-- Color picker dots -->
+          <div :style="{ display: 'flex', alignItems: 'center', gap: '0.25rem', position: 'relative' }">
+            <button
+              :style="{
+                width: '1rem',
+                height: '1rem',
+                borderRadius: '50%',
+                border: newColor ? '1px solid rgba(0,0,0,0.15)' : '1.5px dashed var(--dock-icon)',
+                background: newColor ? NOTE_COLORS[newColor] || 'transparent' : 'transparent',
+                cursor: 'pointer',
+                padding: '0',
+                flexShrink: '0',
+              }"
+              :title="__('Color')"
+              @click="showNewColorPicker = !showNewColorPicker"
+            />
+            <div
+              v-if="showNewColorPicker"
+              :style="{
+                position: 'absolute',
+                bottom: '100%',
+                left: '0',
+                marginBottom: '0.25rem',
+                display: 'flex',
+                gap: '0.375rem',
+                padding: '0.5rem',
+                background: 'var(--dock-bg)',
+                border: '1px solid var(--dock-border)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                zIndex: '10',
+              }"
+            >
+              <button
+                v-for="(hex, name) in NOTE_COLORS"
+                :key="name"
+                :style="{
+                  width: '1.25rem',
+                  height: '1.25rem',
+                  borderRadius: '50%',
+                  background: hex,
+                  border: newColor === name ? '2.5px solid var(--dock-text)' : '1px solid rgba(0,0,0,0.15)',
+                  cursor: 'pointer',
+                  padding: '0',
+                }"
+                :title="name"
+                @click="newColor = newColor === name ? '' : name; showNewColorPicker = false"
+              />
+              <button
+                v-if="newColor"
+                :style="{
+                  width: '1.25rem',
+                  height: '1.25rem',
+                  borderRadius: '50%',
+                  background: 'transparent',
+                  border: '1.5px dashed var(--dock-icon)',
+                  cursor: 'pointer',
+                  padding: '0',
+                }"
+                :title="__('No color')"
+                @click="newColor = ''; showNewColorPicker = false"
+              />
+            </div>
+          </div>
+          <button
+            :style="{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'none',
+              border: 'none',
+              padding: '0.25rem',
+              cursor: 'pointer',
+              color: 'var(--dock-icon)',
+              borderRadius: '0.25rem',
+            }"
+            :title="__('Attach image')"
+            @click="attachImage"
+          >
+            <ImagePlus :style="{ width: '0.875rem', height: '0.875rem' }" />
+          </button>
+        </div>
         <button
-          :disabled="!newContent.trim() || saving"
+          :disabled="(!newContent.trim() && !pendingImages.length) || saving"
           :style="{
             fontSize: '0.75rem',
             padding: '0.25rem 0.75rem',
@@ -271,6 +659,25 @@ onMounted(load)
         overflowY: 'auto',
       }"
     >
+      <!-- Success toast -->
+      <div
+        v-if="actionSuccess"
+        :style="{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.375rem',
+          padding: '0.375rem 0.75rem',
+          margin: '0.5rem 0.75rem',
+          borderRadius: '0.375rem',
+          fontSize: '0.6875rem',
+          background: '#f0fdf4',
+          color: '#15803d',
+          border: '1px solid #bbf7d0',
+        }"
+      >
+        <span>{{ actionSuccess.message }}</span>
+      </div>
+
       <!-- Loading -->
       <div
         v-if="loading"
@@ -300,6 +707,7 @@ onMounted(load)
           :style="{
             padding: '0.625rem 1rem',
             borderBottom: '1px solid var(--dock-border)',
+            borderLeft: note.color ? `4px solid ${colorBorder(note.color)}` : '4px solid transparent',
             position: 'relative',
           }"
           class="dock-note-item"
@@ -358,8 +766,65 @@ onMounted(load)
             }"
             :title="__('Click to edit')"
             v-html="note.content"
-            @click="startEdit(note)"
+            @click="onNoteContentClick($event, note)"
           />
+
+          <!-- Tags -->
+          <div
+            v-if="note.tags.length || addingTagFor === note.name"
+            :style="{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.25rem',
+              marginTop: '0.375rem',
+            }"
+          >
+            <span
+              v-for="tag in note.tags"
+              :key="tag"
+              :style="{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.125rem',
+                padding: '0 0.375rem',
+                fontSize: '0.625rem',
+                lineHeight: '1.25rem',
+                borderRadius: '0.75rem',
+                background: 'color-mix(in srgb, var(--dock-accent, #6366f1) 10%, transparent)',
+                color: 'var(--dock-accent, #6366f1)',
+              }"
+            >
+              {{ tag }}
+              <button
+                :style="{ background: 'none', border: 'none', padding: '0', cursor: 'pointer', color: 'inherit', display: 'flex' }"
+                :title="__('Remove tag')"
+                @click="removeTag(note.name, tag)"
+              >
+                <X :style="{ width: '0.5rem', height: '0.5rem' }" />
+              </button>
+            </span>
+
+            <!-- Inline tag input -->
+            <input
+              v-if="addingTagFor === note.name"
+              v-model="tagInput"
+              :style="{
+                width: '5rem',
+                padding: '0 0.25rem',
+                fontSize: '0.625rem',
+                lineHeight: '1.25rem',
+                border: '1px solid var(--dock-border)',
+                borderRadius: '0.75rem',
+                background: 'transparent',
+                color: 'var(--dock-text)',
+                outline: 'none',
+              }"
+              :placeholder="__('Add a tag')"
+              autofocus
+              @keydown="onTagKeydown($event, note.name)"
+              @blur="cancelAddTag"
+            />
+          </div>
 
           <!-- Meta row -->
           <div
@@ -377,7 +842,171 @@ onMounted(load)
               · {{ note.reference_label }}
             </span>
             <span :style="{ flex: 1 }" />
+            <!-- Hook-driven note actions -->
+            <div
+              v-for="action in noteActions"
+              :key="action.action"
+              :style="{ position: 'relative', display: 'inline-flex' }"
+            >
+              <button
+                :title="__(action.label)"
+                :disabled="actionRunning === note.name"
+                :style="{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.125rem',
+                  cursor: actionRunning === note.name ? 'wait' : 'pointer',
+                  color: 'var(--dock-icon)',
+                  opacity: 0,
+                  transition: 'opacity 0.15s',
+                }"
+                class="dock-note-action"
+                @click.stop="promptNoteAction(action, note.name)"
+              >
+                <SquareArrowOutUpRight :style="{ width: '0.75rem', height: '0.75rem' }" />
+              </button>
+              <!-- Confirmation popover -->
+              <div
+                v-if="confirmActionFor === note.name"
+                :style="{
+                  position: 'absolute',
+                  top: '100%',
+                  right: '0',
+                  marginTop: '0.25rem',
+                  zIndex: 20,
+                  background: 'var(--dock-bg)',
+                  border: '1px solid var(--dock-border)',
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  padding: '0.625rem 0.75rem',
+                  minWidth: '12rem',
+                }"
+                @click.stop
+              >
+                <p :style="{ fontSize: '0.6875rem', color: 'var(--dock-text)', margin: '0 0 0.5rem 0' }">
+                  {{ __('Convert this note to a task?') }}
+                </p>
+                <div :style="{ display: 'flex', justifyContent: 'flex-end', gap: '0.375rem' }">
+                  <button
+                    :style="{
+                      fontSize: '0.6875rem',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      background: 'none',
+                      border: '1px solid var(--dock-border)',
+                      color: 'var(--dock-text)',
+                      cursor: 'pointer',
+                    }"
+                    @click.stop="cancelNoteAction"
+                  >{{ __('Cancel') }}</button>
+                  <button
+                    :disabled="actionRunning === note.name"
+                    :style="{
+                      fontSize: '0.6875rem',
+                      padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      background: 'var(--dock-accent, #6366f1)',
+                      color: 'white',
+                      border: 'none',
+                      cursor: actionRunning === note.name ? 'wait' : 'pointer',
+                      opacity: actionRunning === note.name ? 0.5 : 1,
+                    }"
+                    @click.stop="confirmNoteAction"
+                  >{{ actionRunning === note.name ? __('Converting...') : __('Convert') }}</button>
+                </div>
+              </div>
+            </div>
             <!-- Actions -->
+            <div :style="{ position: 'relative', display: 'inline-flex' }">
+              <button
+                :title="__('Color')"
+                :style="{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.125rem',
+                  cursor: 'pointer',
+                  color: 'var(--dock-icon)',
+                  opacity: 0,
+                  transition: 'opacity 0.15s',
+                }"
+                class="dock-note-action"
+                @click.stop="toggleColorPicker(note.name)"
+              >
+                <Palette :style="{ width: '0.75rem', height: '0.75rem' }" />
+              </button>
+              <!-- Color popover -->
+              <div
+                v-if="colorPickerFor === note.name"
+                :style="{
+                  position: 'absolute',
+                  top: '100%',
+                  right: '0',
+                  marginTop: '0.25rem',
+                  zIndex: 20,
+                  display: 'flex',
+                  gap: '0.375rem',
+                  padding: '0.5rem',
+                  background: 'var(--dock-bg)',
+                  border: '1px solid var(--dock-border)',
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                }"
+                @click.stop
+              >
+                <button
+                  v-for="(hex, name) in NOTE_COLORS"
+                  :key="name"
+                  :style="{
+                    width: '1.25rem',
+                    height: '1.25rem',
+                    borderRadius: '50%',
+                    background: hex,
+                    border: note.color === name ? '2.5px solid var(--dock-text)' : '1px solid rgba(0,0,0,0.15)',
+                    cursor: 'pointer',
+                    padding: '0',
+                    transition: 'transform 0.1s',
+                  }"
+                  :title="String(name)"
+                  @click="setNoteColor(note.name, note.color === name ? '' : String(name))"
+                />
+                <button
+                  v-if="note.color"
+                  :style="{
+                    width: '1.25rem',
+                    height: '1.25rem',
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    border: '1.5px dashed var(--dock-icon)',
+                    cursor: 'pointer',
+                    padding: '0',
+                  }"
+                  :title="__('No color')"
+                  @click="setNoteColor(note.name, '')"
+                />
+              </div>
+            </div>
+            <button
+              :title="__('Add a tag')"
+              :style="{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'none',
+                border: 'none',
+                padding: '0.125rem',
+                cursor: 'pointer',
+                color: 'var(--dock-icon)',
+                opacity: 0,
+                transition: 'opacity 0.15s',
+              }"
+              class="dock-note-action"
+              @click.stop="startAddTag(note.name)"
+            >
+              <Tag :style="{ width: '0.75rem', height: '0.75rem' }" />
+            </button>
             <button
               :title="note.pinned ? __('Unpin') : __('Pin')"
               :style="{
@@ -461,5 +1090,15 @@ onMounted(load)
 <style scoped>
 .dock-note-item:hover .dock-note-action {
   opacity: 1 !important;
+}
+
+/* Constrain images in note content — panel is compact */
+.dock-note-item :deep(img) {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 0.375rem;
+  margin: 0.25rem 0;
+  cursor: pointer;
 }
 </style>

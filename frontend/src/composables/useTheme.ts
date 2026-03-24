@@ -52,7 +52,7 @@ export function useTheme(): UseThemeReturn {
     applyTheme(t)
     localStorage.setItem(STORAGE_KEY, t)
     // Persist to server best-effort — no await, silent failure is acceptable
-    callApi('dock.api.settings.save_user_preference', { values: { theme: t } }).catch(() => {})
+    callApi('dock.api.settings.save_user_preference', { theme: t }).catch(() => {})
   }
 
   return { theme, setTheme }

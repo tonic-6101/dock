@@ -26,8 +26,26 @@ export interface DockEvent {
   source_name: string
   description: string | null
   user: string
+  calendar: string | null
   attendees?: DockEventAttendee[]
   context_panels?: DockContextPanel[]
+}
+
+export interface DockCalendar {
+  name: string
+  title: string
+  color: string
+  is_default?: 0 | 1
+  owner_user: string
+  owner_name?: string
+  role?: 'View' | 'Edit' | 'Manage'
+}
+
+export interface DockCalendarMember {
+  user: string
+  user_name?: string
+  user_image?: string | null
+  role: 'View' | 'Edit' | 'Manage'
 }
 
 export interface DockContextPanel {

@@ -8,6 +8,7 @@ from frappe import _
 @frappe.whitelist()
 def save_user_preference(
     theme: str = None,
+    color_mode: str = None,
     timezone: str = None,
     week_start: str = None,
     date_format: str = None,
@@ -27,6 +28,8 @@ def save_user_preference(
 
     if theme is not None:
         doc.theme = theme
+    if color_mode is not None:
+        doc.color_mode = color_mode
     if timezone is not None:
         doc.timezone = timezone
     if week_start is not None:
@@ -94,9 +97,12 @@ def _get_merged_settings(user: str) -> dict:
 
     # theme: user pref only → fallback to "system" (no org-level theme)
     theme = (pref.theme if pref and pref.theme else None) or "system"
+    # color_mode: user pref only → fallback to "branded"
+    color_mode = (pref.color_mode if pref and pref.get("color_mode") else None) or "branded"
 
     return {
         "theme": theme,
+        "color_mode": color_mode,
         "timezone": resolve(
             pref.timezone if pref else None,
             org.get("timezone"),

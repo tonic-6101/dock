@@ -88,7 +88,7 @@ watch(language,   val => savePreference('ui_language', val))
           :key="t.value"
           class="px-4 py-1.5 text-sm transition-colors"
           :class="theme === t.value
-            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium'
+            ? 'bg-accent-600 dark:bg-accent-400 text-white dark:text-gray-900 font-medium'
             : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'"
           @click="theme = t.value as typeof theme"
         >

@@ -39,6 +39,13 @@ const router = createRouter({
       component: () => import('@/pages/DockSettingsAppHost.vue'),
     },
 
+    // ── Bin (unified cross-app trash) ────────────────────────────────
+    {
+      path: '/bin',
+      name: 'dock-bin',
+      component: () => import('@/pages/DockBinPage.vue'),
+    },
+
     // ── Account (accessible from avatar menu, not sidebar) ────────────
     {
       path: '/account',

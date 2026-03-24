@@ -159,7 +159,7 @@ const apps = computed(() => {
     <div class="border border-[var(--dock-border)] rounded-lg overflow-hidden">
       <!-- Header row -->
       <div class="flex items-center gap-3 px-3 py-2 border-b border-[var(--dock-border)] bg-black/[0.02] dark:bg-white/[0.02]">
-        <input type="checkbox" :checked="allSelected" class="w-3.5 h-3.5 accent-[var(--dock-accent)]" @change="toggleAll" />
+        <input type="checkbox" :checked="allSelected" class="w-3.5 h-3.5 accent-accent-600" @change="toggleAll" />
         <span class="text-xs text-[var(--dock-icon)]">{{ total }} {{ __('total') }}</span>
       </div>
 
@@ -173,7 +173,7 @@ const apps = computed(() => {
             <input
               type="checkbox"
               :checked="selected.has(n.name)"
-              class="w-3.5 h-3.5 accent-[var(--dock-accent)]"
+              class="w-3.5 h-3.5 accent-accent-600"
               @change="selected.has(n.name) ? selected.delete(n.name) : selected.add(n.name)"
             />
           </div>

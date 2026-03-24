@@ -39,7 +39,9 @@ export function useDockBoot() {
   const settings = computed(() => dock.value?.settings ?? null)
   const registeredApps = computed(() => dock.value?.registered_apps ?? [])
   const calendarSources = computed(() => dock.value?.calendar_sources ?? [])
+  const userCalendars = computed(() => dock.value?.user_calendars ?? { user_calendars: [], shared_calendars: [] })
   const notificationTypes = computed(() => dock.value?.notification_types ?? [])
+  const noteActions = computed(() => dock.value?.note_actions ?? [])
 
-  return { dock, isInstalled, settings, registeredApps, calendarSources, notificationTypes }
+  return { dock, isInstalled, settings, registeredApps, calendarSources, userCalendars, notificationTypes, noteActions }
 }

@@ -32,6 +32,7 @@ const {
   displayDuration,
   hasError, loading, stoppedEntry,
   start, stop, startFocus, clearError, clearStoppedEntry,
+  snoozeStale,
 } = useDockTimer()
 const { closePanel } = useDockPanels()
 
@@ -41,6 +42,23 @@ const staleWarningStyle = {
   color: '#92400e',
   background: '#fffbeb',
   borderBottom: '1px solid #fde68a',
+}
+
+const staleActionsStyle = {
+  display: 'flex',
+  gap: '0.375rem',
+  marginTop: '0.375rem',
+}
+
+const snoozeButtonStyle = {
+  background: 'none',
+  border: '1px solid #fde68a',
+  borderRadius: '0.25rem',
+  color: '#92400e',
+  cursor: 'pointer',
+  fontSize: '0.75rem',
+  lineHeight: '1',
+  padding: '0.25rem 0.5rem',
 }
 
 const focusIndicatorStyle = {
@@ -156,6 +174,12 @@ function onRetry() {
       <!-- Stale timer warning (regular timer only) -->
       <div v-if="isStale && !timerState.focus_mode" :style="staleWarningStyle">
         <span>{{ __('Timer running for {0} — did you forget?').replace('{0}', displayDuration) }}</span>
+        <div :style="staleActionsStyle">
+          <button :style="snoozeButtonStyle" @click="snoozeStale(15)">{{ __('15m') }}</button>
+          <button :style="snoozeButtonStyle" @click="snoozeStale(30)">{{ __('30m') }}</button>
+          <button :style="snoozeButtonStyle" @click="snoozeStale(60)">{{ __('1h') }}</button>
+          <button :style="snoozeButtonStyle" @click="snoozeStale()">{{ __('EOD') }}</button>
+        </div>
       </div>
 
       <!-- Focus session indicator -->

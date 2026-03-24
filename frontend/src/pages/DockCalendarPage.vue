@@ -8,13 +8,15 @@ export default { name: 'DockCalendarPage' }
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, X, Plus, MoreHorizontal, Share2, Trash2, Pencil } from 'lucide-vue-next'
 import { callApi } from '@/composables/useApi'
 import { useDockBoot } from '@/composables/useDockBoot'
 import { __ } from '@/composables/useTranslate'
 import DockCreateEventModal from '@/components/calendar/DockCreateEventModal.vue'
 import DockEventManagerPanel from '@/components/calendar/DockEventManagerPanel.vue'
-import type { DockEvent as DockEventType } from '@/types/dock'
+import CreateCalendarPopover from '@/components/calendar/CreateCalendarPopover.vue'
+import ShareCalendarModal from '@/components/calendar/ShareCalendarModal.vue'
+import type { DockEvent as DockEventType, DockCalendar } from '@/types/dock'
 
 interface DockEvent {
   name: string
@@ -29,6 +31,7 @@ interface DockEvent {
   source_doctype: string
   source_name: string
   description: string | null
+  calendar: string | null
 }
 
 interface CalendarSource {
@@ -49,16 +52,34 @@ type CalendarView = 'week' | 'month' | 'day' | 'agenda'
 
 const HOUR_HEIGHT = 60
 const STORAGE_HIDDEN = 'dock.calendar.hidden_sources'
+const STORAGE_HIDDEN_CALS = 'dock.calendar.hidden_calendars'
 const STORAGE_VIEW   = 'dock.calendar.view'
 
-const { settings, calendarSources } = useDockBoot()
+const { settings, calendarSources, userCalendars } = useDockBoot()
 const weekStartMonday = computed(() => (settings.value?.week_start ?? 'Monday') === 'Monday')
+
+// User calendars (owned + shared)
+const myCalendars = ref<DockCalendar[]>([])
+const sharedCalendars = ref<DockCalendar[]>([])
+const showCreateCalendar = ref(false)
+const shareCalendar = ref<DockCalendar | null>(null)
+const showShareModal = ref(false)
+const contextMenuCal = ref<DockCalendar | null>(null)
+const contextMenuPos = ref<{ x: number; y: number } | null>(null)
+const collapsedGroups = ref<Set<string>>(new Set())
+
+// Rename inline editing
+const renamingCal = ref<string | null>(null)
+const renameTitle = ref('')
 
 const view = ref<CalendarView>(
   (localStorage.getItem(STORAGE_VIEW) as CalendarView | null) ?? 'week'
 )
 const hiddenApps = ref<Set<string>>(
   new Set(JSON.parse(localStorage.getItem(STORAGE_HIDDEN) || '[]') as string[])
+)
+const hiddenCals = ref<Set<string>>(
+  new Set(JSON.parse(localStorage.getItem(STORAGE_HIDDEN_CALS) || '[]') as string[])
 )
 
 const currentDate = ref(new Date())
@@ -104,6 +125,12 @@ function formatDateShort(d: Date): string {
 
 function eventColor(ev: DockEvent): string {
   if (ev.color) return ev.color
+  // For native events, resolve from their user calendar
+  if (ev.calendar) {
+    const cal = [...myCalendars.value, ...sharedCalendars.value].find(c => c.name === ev.calendar)
+    if (cal?.color) return cal.color
+  }
+  // For app-sourced events, resolve from app source
   const src = (calendarSources.value as CalendarSource[]).find(s => s.app === ev.source_app)
   return src?.color ?? '#6366f1'
 }
@@ -163,7 +190,13 @@ function eventHeight(ev: DockEvent): number {
 }
 
 const filteredEvents = computed(() => {
-  let list = events.value.filter(ev => !hiddenApps.value.has(ev.source_app))
+  let list = events.value.filter(ev => {
+    // Hide by app source toggle
+    if (hiddenApps.value.has(ev.source_app)) return false
+    // Hide by user calendar toggle
+    if (ev.calendar && hiddenCals.value.has(ev.calendar)) return false
+    return true
+  })
   if (urlRef.value) list = list.filter(ev => ev.source_name === urlRef.value)
   return list
 })
@@ -314,26 +347,109 @@ function debouncedFetch() {
   fetchTimer = setTimeout(() => { fetchTimer = null; fetchEvents() }, 200)
 }
 
+// ── Calendar management ───────────────────────────────────────────────────
+
+function toggleCalendar(calName: string) {
+  const next = new Set(hiddenCals.value)
+  next.has(calName) ? next.delete(calName) : next.add(calName)
+  hiddenCals.value = next
+  localStorage.setItem(STORAGE_HIDDEN_CALS, JSON.stringify([...next]))
+}
+
+function toggleGroup(group: string) {
+  const next = new Set(collapsedGroups.value)
+  next.has(group) ? next.delete(group) : next.add(group)
+  collapsedGroups.value = next
+}
+
+function showCalendarContextMenu(cal: DockCalendar, event: MouseEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  contextMenuCal.value = cal
+  contextMenuPos.value = { x: event.clientX, y: event.clientY }
+}
+
+function closeContextMenu() {
+  contextMenuCal.value = null
+  contextMenuPos.value = null
+}
+
+function startRename(cal: DockCalendar) {
+  renamingCal.value = cal.name
+  renameTitle.value = cal.title
+  closeContextMenu()
+  nextTick(() => {
+    const input = document.querySelector(`input[data-rename="${cal.name}"]`) as HTMLInputElement
+    input?.focus()
+    input?.select()
+  })
+}
+
+async function finishRename(cal: DockCalendar) {
+  const newTitle = renameTitle.value.trim()
+  if (!newTitle || newTitle === cal.title) { renamingCal.value = null; return }
+  try {
+    await callApi('dock.api.calendars.update_calendar', { name: cal.name, title: newTitle })
+    cal.title = newTitle
+  } catch { /* ignore */ }
+  renamingCal.value = null
+}
+
+function openShareModal(cal: DockCalendar) {
+  closeContextMenu()
+  shareCalendar.value = cal
+  showShareModal.value = true
+}
+
+async function deleteCalendar(cal: DockCalendar) {
+  closeContextMenu()
+  if (cal.is_default) return
+  try {
+    await callApi('dock.api.calendars.delete_calendar', { name: cal.name })
+    myCalendars.value = myCalendars.value.filter(c => c.name !== cal.name)
+    await fetchEvents()
+  } catch { /* ignore */ }
+}
+
+async function changeCalendarColor(cal: DockCalendar, color: string) {
+  try {
+    await callApi('dock.api.calendars.update_calendar', { name: cal.name, color })
+    cal.color = color
+  } catch { /* ignore */ }
+}
+
+function onCalendarCreated(cal: DockCalendar) {
+  myCalendars.value = [...myCalendars.value, cal]
+}
+
+async function loadUserCalendars() {
+  try {
+    // Fetch fresh from API — boot data may not be ready in SPA mode
+    const data = await callApi<{ user_calendars: DockCalendar[]; shared_calendars: DockCalendar[] }>(
+      'dock.api.calendars.get_calendars'
+    )
+    myCalendars.value = data?.user_calendars ?? []
+    sharedCalendars.value = data?.shared_calendars ?? []
+
+    // If user has no calendars, auto-create a default
+    if (!myCalendars.value.length) {
+      const defaultCal = await callApi<DockCalendar>('dock.api.calendars.ensure_default_calendar')
+      if (defaultCal?.name) {
+        myCalendars.value = [{ ...defaultCal, is_default: 1, owner_user: '' } as DockCalendar]
+      }
+    }
+  } catch {
+    myCalendars.value = []
+    sharedCalendars.value = []
+  }
+}
+
 // ── Slot / create interactions ─────────────────────────────────────────────
 
 function onSlotClick(day: Date, hour: number) {
-  const sources = calendarSources.value as CalendarSource[]
-  if (!sources.length) return
-  if (sources.length === 1) { navigateToCreate(sources[0], day, hour); return }
-  createTarget.value = { date: day, hour }
-}
-
-function navigateToCreate(src: CalendarSource, day: Date, hour: number) {
-  if (!src.create_route_template) {
-    // No app-specific create route — open Dock's own create modal
-    createModalDate.value = day
-    showCreateModal.value = true
-    return
-  }
-  const url = src.create_route_template
-    .replace('{date}', dateKey(day))
-    .replace('{time}', `${String(hour).padStart(2, '0')}:00`)
-  window.location.href = url
+  // Always open Dock's own create modal for native events
+  createModalDate.value = day
+  showCreateModal.value = true
 }
 
 function scrollToCurrentTime() {
@@ -378,15 +494,20 @@ onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   urlSource.value = params.get('source')
   urlRef.value    = params.get('ref')
+  await loadUserCalendars()
   await fetchEvents()
   if (view.value === 'week' || view.value === 'day') scrollToCurrentTime()
   clockTimer = setInterval(() => { now.value = new Date() }, 60000)
+  // Close context menu on click outside
+  document.addEventListener('click', closeContextMenu)
 })
 
 onUnmounted(() => {
   clearInterval(clockTimer)
   if (fetchTimer) clearTimeout(fetchTimer)
+  document.removeEventListener('click', closeContextMenu)
 })
+
 </script>
 
 <template>
@@ -396,11 +517,10 @@ onUnmounted(() => {
     <aside class="w-52 shrink-0 border-r border-[var(--dock-border)] flex flex-col overflow-y-auto">
       <div class="p-3">
         <button
-          v-if="(calendarSources as CalendarSource[]).length"
           class="flex items-center gap-1.5 w-full px-3 py-2 rounded-lg text-sm font-medium
                  border border-[var(--dock-border)] text-[var(--dock-text)]
                  hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-          @click="onSlotClick(new Date(), new Date().getHours())"
+          @click="openCreateModal()"
         >
           <Plus class="w-4 h-4" />
           {{ __('Add event') }}
@@ -430,11 +550,12 @@ onUnmounted(() => {
             v-for="day in miniMonthDays" :key="dateKey(day.date)"
             class="aspect-square flex items-center justify-center rounded-full text-[10px] transition-colors"
             :class="[
-              isToday(day.date) ? 'bg-[var(--dock-icon)] text-white font-semibold'
+              isToday(day.date) ? 'text-white font-semibold'
                 : isInCurrentWeek(day.date) && view === 'week' ? 'bg-black/5 dark:bg-white/10 text-[var(--dock-text)]'
                 : day.currentMonth ? 'text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10'
                 : 'text-[var(--dock-icon)] opacity-40',
             ]"
+            :style="isToday(day.date) ? { backgroundColor: 'var(--app-accent-500)' } : {}"
             @click="jumpToDay(day.date)"
           >
             {{ day.date.getDate() }}
@@ -442,35 +563,173 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- App toggles -->
-      <div class="px-3 flex-1">
-        <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--dock-icon)] mb-2">
-          {{ __('My calendars') }}
-        </p>
-        <div
-          v-for="src in (calendarSources as CalendarSource[])" :key="src.app"
-          class="flex items-center gap-2 mb-2 cursor-pointer select-none"
-          role="checkbox" :aria-checked="!hiddenApps.has(src.app)"
-          :aria-label="`${__('Show')} ${src.label} ${__('events')}`"
-          tabindex="0"
-          @click="toggleSource(src.app)"
-          @keydown.enter="toggleSource(src.app)"
-          @keydown.space.prevent="toggleSource(src.app)"
+      <!-- Calendar groups -->
+      <div class="px-3 flex-1 space-y-3">
+
+        <!-- + Add calendar -->
+        <button
+          class="flex items-center gap-1 text-[10px] font-medium text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
+          @click="showCreateCalendar = true"
         >
-          <span
-            class="w-3.5 h-3.5 rounded-sm shrink-0 border-2 flex items-center justify-center"
-            :style="hiddenApps.has(src.app)
-              ? { borderColor: src.color, backgroundColor: 'transparent' }
-              : { borderColor: src.color, backgroundColor: src.color }"
+          <Plus class="w-3 h-3" />
+          {{ __('Add calendar') }}
+        </button>
+
+        <!-- MY CALENDARS -->
+        <div v-if="myCalendars.length">
+          <button
+            class="flex items-center gap-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--dock-icon)] hover:text-[var(--dock-text)] select-none"
+            @click="toggleGroup('my')"
           >
-            <svg v-if="!hiddenApps.has(src.app)" viewBox="0 0 8 8" class="w-2 h-2 fill-none stroke-white stroke-[1.5]">
-              <polyline points="1,4 3,6 7,2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </span>
-          <span class="text-xs text-[var(--dock-text)]">{{ src.label }}</span>
+            <ChevronRight class="w-2.5 h-2.5 transition-transform" :class="collapsedGroups.has('my') ? '' : 'rotate-90'" />
+            {{ __('My calendars') }}
+          </button>
+          <template v-if="!collapsedGroups.has('my')">
+            <div
+              v-for="cal in myCalendars" :key="cal.name"
+              class="flex items-center gap-2 mb-1.5 group"
+            >
+              <!-- Toggle checkbox -->
+              <button
+                class="w-3.5 h-3.5 rounded-sm shrink-0 border-2 flex items-center justify-center cursor-pointer"
+                :style="hiddenCals.has(cal.name)
+                  ? { borderColor: cal.color, backgroundColor: 'transparent' }
+                  : { borderColor: cal.color, backgroundColor: cal.color }"
+                @click="toggleCalendar(cal.name)"
+              >
+                <svg v-if="!hiddenCals.has(cal.name)" viewBox="0 0 8 8" class="w-2 h-2 fill-none stroke-white stroke-[1.5]">
+                  <polyline points="1,4 3,6 7,2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <!-- Name (or inline rename) -->
+              <input
+                v-if="renamingCal === cal.name"
+                :data-rename="cal.name"
+                v-model="renameTitle"
+                type="text"
+                class="flex-1 text-xs px-1 py-0.5 rounded border border-[var(--dock-border)] bg-[var(--dock-bg)] text-[var(--dock-text)]
+                       focus:outline-none focus:border-[var(--dock-icon)]"
+                @keydown.enter="finishRename(cal)"
+                @keydown.escape="renamingCal = null"
+                @blur="finishRename(cal)"
+              />
+              <span
+                v-else
+                class="flex-1 text-xs text-[var(--dock-text)] truncate cursor-pointer select-none"
+                @click="toggleCalendar(cal.name)"
+              >{{ cal.title }}</span>
+              <!-- Context menu trigger -->
+              <button
+                class="p-0.5 rounded opacity-0 group-hover:opacity-100 text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-opacity"
+                @click.stop="showCalendarContextMenu(cal, $event)"
+              >
+                <MoreHorizontal class="w-3 h-3" />
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <!-- SHARED WITH ME -->
+        <div v-if="sharedCalendars.length">
+          <button
+            class="flex items-center gap-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--dock-icon)] hover:text-[var(--dock-text)] select-none"
+            @click="toggleGroup('shared')"
+          >
+            <ChevronRight class="w-2.5 h-2.5 transition-transform" :class="collapsedGroups.has('shared') ? '' : 'rotate-90'" />
+            {{ __('Shared with me') }}
+          </button>
+          <template v-if="!collapsedGroups.has('shared')">
+            <div
+              v-for="cal in sharedCalendars" :key="cal.name"
+              class="flex items-center gap-2 mb-1.5"
+            >
+              <button
+                class="w-3.5 h-3.5 rounded-sm shrink-0 border-2 flex items-center justify-center cursor-pointer"
+                :style="hiddenCals.has(cal.name)
+                  ? { borderColor: cal.color, backgroundColor: 'transparent' }
+                  : { borderColor: cal.color, backgroundColor: cal.color }"
+                @click="toggleCalendar(cal.name)"
+              >
+                <svg v-if="!hiddenCals.has(cal.name)" viewBox="0 0 8 8" class="w-2 h-2 fill-none stroke-white stroke-[1.5]">
+                  <polyline points="1,4 3,6 7,2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <span
+                class="flex-1 text-xs text-[var(--dock-text)] truncate cursor-pointer select-none"
+                @click="toggleCalendar(cal.name)"
+              >{{ cal.owner_name }} — {{ cal.title }}</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- APPS -->
+        <div v-if="(calendarSources as CalendarSource[]).length">
+          <button
+            class="flex items-center gap-1 mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--dock-icon)] hover:text-[var(--dock-text)] select-none"
+            @click="toggleGroup('apps')"
+          >
+            <ChevronRight class="w-2.5 h-2.5 transition-transform" :class="collapsedGroups.has('apps') ? '' : 'rotate-90'" />
+            {{ __('Apps') }}
+          </button>
+          <template v-if="!collapsedGroups.has('apps')">
+            <div
+              v-for="src in (calendarSources as CalendarSource[])" :key="src.app"
+              class="flex items-center gap-2 mb-1.5 cursor-pointer select-none"
+              role="checkbox" :aria-checked="!hiddenApps.has(src.app)"
+              tabindex="0"
+              @click="toggleSource(src.app)"
+              @keydown.enter="toggleSource(src.app)"
+              @keydown.space.prevent="toggleSource(src.app)"
+            >
+              <span
+                class="w-3.5 h-3.5 rounded-sm shrink-0 border-2 flex items-center justify-center"
+                :style="hiddenApps.has(src.app)
+                  ? { borderColor: src.color, backgroundColor: 'transparent' }
+                  : { borderColor: src.color, backgroundColor: src.color }"
+              >
+                <svg v-if="!hiddenApps.has(src.app)" viewBox="0 0 8 8" class="w-2 h-2 fill-none stroke-white stroke-[1.5]">
+                  <polyline points="1,4 3,6 7,2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="text-xs text-[var(--dock-text)]">{{ src.label }}</span>
+            </div>
+          </template>
         </div>
       </div>
     </aside>
+
+    <!-- Calendar context menu -->
+    <Teleport to="body">
+      <div
+        v-if="contextMenuCal && contextMenuPos"
+        class="fixed z-50 w-40 rounded-lg shadow-xl border border-[var(--dock-border)] bg-[var(--dock-bg)] py-1"
+        :style="{ top: `${contextMenuPos.y}px`, left: `${contextMenuPos.x}px` }"
+        @click.stop
+      >
+        <button
+          class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10"
+          @click="startRename(contextMenuCal!)"
+        >
+          <Pencil class="w-3 h-3 text-[var(--dock-icon)]" />
+          {{ __('Rename') }}
+        </button>
+        <button
+          class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left text-[var(--dock-text)] hover:bg-black/5 dark:hover:bg-white/10"
+          @click="openShareModal(contextMenuCal!)"
+        >
+          <Share2 class="w-3 h-3 text-[var(--dock-icon)]" />
+          {{ __('Share...') }}
+        </button>
+        <button
+          v-if="!contextMenuCal!.is_default"
+          class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+          @click="deleteCalendar(contextMenuCal!)"
+        >
+          <Trash2 class="w-3 h-3" />
+          {{ __('Delete') }}
+        </button>
+      </div>
+    </Teleport>
 
     <!-- Main -->
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -499,10 +758,9 @@ onUnmounted(() => {
         <div class="ml-auto flex items-center gap-2">
           <button
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
-                   bg-[var(--dock-icon)] text-white hover:opacity-90 transition-opacity"
-            @click="(calendarSources as CalendarSource[]).length
-              ? onSlotClick(new Date(), new Date().getHours())
-              : openCreateModal()"
+                   text-white hover:opacity-90 transition-opacity"
+            :style="{ backgroundColor: 'var(--app-accent-600)' }"
+            @click="openCreateModal()"
           >
             <Plus class="w-3.5 h-3.5" />
             {{ __('New Event') }}
@@ -512,7 +770,8 @@ onUnmounted(() => {
               v-for="v in (['week', 'month', 'day', 'agenda'] as CalendarView[])" :key="v"
               role="tab" :aria-selected="view === v"
               class="px-3 py-1 text-xs font-medium transition-colors capitalize"
-              :class="view === v ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+              :class="view === v ? 'text-white' : 'text-[var(--dock-icon)] hover:bg-black/5 dark:hover:bg-white/10'"
+              :style="view === v ? { backgroundColor: 'var(--app-accent-600)' } : {}"
               @click="view = v"
             >
               {{ __(v === 'week' ? 'Week' : v === 'month' ? 'Month' : v === 'day' ? 'Day' : 'Agenda') }}
@@ -533,7 +792,8 @@ onUnmounted(() => {
             <div class="text-[10px] text-[var(--dock-icon)]">{{ day.toLocaleString('default', { weekday: 'short' }) }}</div>
             <div
               class="w-6 h-6 mx-auto rounded-full flex items-center justify-center text-sm font-semibold"
-              :class="isToday(day) ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-text)]'"
+              :class="isToday(day) ? 'text-white' : 'text-[var(--dock-text)]'"
+              :style="isToday(day) ? { backgroundColor: 'var(--app-accent-500)' } : {}"
             >{{ day.getDate() }}</div>
           </div>
         </div>
@@ -612,7 +872,8 @@ onUnmounted(() => {
             <div class="text-[10px] text-[var(--dock-icon)]">{{ currentDate.toLocaleString('default', { weekday: 'long' }) }}</div>
             <div
               class="w-6 h-6 mx-auto rounded-full flex items-center justify-center text-sm font-semibold"
-              :class="isToday(currentDate) ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-text)]'"
+              :class="isToday(currentDate) ? 'text-white' : 'text-[var(--dock-text)]'"
+              :style="isToday(currentDate) ? { backgroundColor: 'var(--app-accent-500)' } : {}"
             >{{ currentDate.getDate() }}</div>
           </div>
         </div>
@@ -697,7 +958,8 @@ onUnmounted(() => {
               <div class="flex justify-end mb-0.5">
                 <span
                   class="text-xs w-5 h-5 flex items-center justify-center rounded-full font-medium cursor-pointer"
-                  :class="isToday(day.date) ? 'bg-[var(--dock-icon)] text-white' : 'text-[var(--dock-text)] hover:bg-black/5'"
+                  :class="isToday(day.date) ? 'text-white' : 'text-[var(--dock-text)] hover:bg-black/5'"
+                  :style="isToday(day.date) ? { backgroundColor: 'var(--app-accent-500)' } : {}"
                   @click="jumpToDay(day.date)"
                 >{{ day.date.getDate() }}</span>
               </div>
@@ -734,7 +996,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-3 mb-1">
                 <div
                   class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
-                  :class="group.date === dateKey(now) ? 'bg-[var(--dock-icon)] text-white' : 'bg-black/5 dark:bg-white/10 text-[var(--dock-text)]'"
+                  :class="group.date === dateKey(now) ? 'text-white' : 'bg-black/5 dark:bg-white/10 text-[var(--dock-text)]'"
+                  :style="group.date === dateKey(now) ? { backgroundColor: 'var(--app-accent-500)' } : {}"
                 >
                   {{ new Date(group.date + 'T00:00:00').getDate() }}
                 </div>
@@ -782,41 +1045,28 @@ onUnmounted(() => {
       @deleted="onEventDeleted"
     />
 
-    <!-- Create picker -->
-    <Teleport to="body">
-      <div
-        v-if="createTarget"
-        role="dialog" :aria-label="__('Create in:')"
-        class="fixed inset-0 flex items-center justify-center z-50"
-        @click.self="createTarget = null"
-      >
-        <div class="w-64 rounded-xl shadow-xl bg-[var(--dock-bg)] border border-[var(--dock-border)] p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-xs text-[var(--dock-icon)]">
-              {{ formatDateShort(createTarget.date) }} · {{ String(createTarget.hour).padStart(2, '0') }}:00
-            </div>
-            <button class="text-[var(--dock-icon)]" @click="createTarget = null"><X class="w-3.5 h-3.5" /></button>
-          </div>
-          <p class="text-xs font-medium text-[var(--dock-text)] mb-2">{{ __('Create in:') }}</p>
-          <div class="space-y-1">
-            <button
-              v-for="src in (calendarSources as CalendarSource[])" :key="src.app"
-              class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-[var(--dock-text)]"
-              @click="navigateToCreate(src, createTarget.date, createTarget.hour); createTarget = null"
-            >
-              <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: src.color }" />
-              {{ src.label }} — {{ src.event_label }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- (create picker removed — calendar dropdown in create modal replaces it) -->
 
     <DockCreateEventModal
       :show="showCreateModal"
       :initial-date="createModalDate"
+      :calendars="[...myCalendars, ...sharedCalendars.filter(c => c.role === 'Edit' || c.role === 'Manage')]"
       @close="showCreateModal = false"
       @created="onEventCreated"
+    />
+
+    <CreateCalendarPopover
+      :show="showCreateCalendar"
+      :used-colors="myCalendars.map(c => c.color)"
+      @close="showCreateCalendar = false"
+      @created="onCalendarCreated"
+    />
+
+    <ShareCalendarModal
+      :show="showShareModal"
+      :calendar="shareCalendar"
+      @close="showShareModal = false"
+      @updated="loadUserCalendars"
     />
   </div>
 </template>

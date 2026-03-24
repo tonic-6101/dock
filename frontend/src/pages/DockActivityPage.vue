@@ -281,7 +281,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="filterApps.size === 0"
-              class="w-3.5 h-3.5 accent-[var(--dock-accent,theme(colors.blue.600))]"
+              class="w-3.5 h-3.5 accent-accent-600"
               @change="selectAllApps()"
             />
             {{ __('All apps') }}
@@ -295,7 +295,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="filterApps.has(a)"
-              class="w-3.5 h-3.5 accent-[var(--dock-accent,theme(colors.blue.600))]"
+              class="w-3.5 h-3.5 accent-accent-600"
               @change="toggleApp(a)"
             />
             {{ a }}
@@ -406,7 +406,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="filterTypes.size === 0"
-              class="w-3.5 h-3.5 accent-[var(--dock-accent,theme(colors.blue.600))]"
+              class="w-3.5 h-3.5 accent-accent-600"
               @change="selectAllTypes()"
             />
             {{ __('All types') }}
@@ -420,7 +420,7 @@ onMounted(() => {
             <input
               type="checkbox"
               :checked="filterTypes.has(t.doctype)"
-              class="w-3.5 h-3.5 accent-[var(--dock-accent,theme(colors.blue.600))]"
+              class="w-3.5 h-3.5 accent-accent-600"
               @change="toggleType(t.doctype)"
             />
             {{ __(t.label) }}

@@ -95,10 +95,15 @@ function stopTick() {
 // ── State application ──────────────────────────────────────────────
 
 function applyState(s: TimerState) {
+  const wasRunning = timerState.value.state === 'running'
   timerState.value = s
   displaySeconds.value = s.elapsed_seconds ?? 0
   stopTick()
-  if (s.state === 'running') startTick()
+  if (s.state === 'running') {
+    // Reset snooze when a new timer starts (not on poll refresh of same timer)
+    if (!wasRunning) staleSnoozedUntil.value = 0
+    startTick()
+  }
 }
 
 // ── Computed ───────────────────────────────────────────────────────
@@ -134,9 +139,24 @@ const isActive = computed(() => isRunning.value || isPaused.value)
 
 // Stale threshold — read from Watch Settings via boot, fallback 4 hours
 const staleThresholdHours = boot?.stale_threshold_hours ?? 4
+const staleSnoozedUntil = ref(0)
 const isStale = computed(() =>
-  isRunning.value && displaySeconds.value > staleThresholdHours * 3600,
+  isRunning.value
+  && displaySeconds.value > staleThresholdHours * 3600
+  && Date.now() > staleSnoozedUntil.value,
 )
+
+/** Snooze the stale warning for the given number of minutes, or until end of day. */
+function snoozeStale(minutes?: number) {
+  if (minutes) {
+    staleSnoozedUntil.value = Date.now() + minutes * 60_000
+  } else {
+    // End of day — midnight tonight
+    const eod = new Date()
+    eod.setHours(23, 59, 59, 999)
+    staleSnoozedUntil.value = eod.getTime()
+  }
+}
 
 const appColor = computed(() => {
   const ctxApp = timerState.value.context_app
@@ -363,5 +383,6 @@ export function useDockTimer() {
     clearError,
     clearStoppedEntry,
     applyState,
+    snoozeStale,
   }
 }
