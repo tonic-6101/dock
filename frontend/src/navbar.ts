@@ -16,10 +16,15 @@
 //   const routes = [...appRoutes, ...dockSharedRoutes('/orga')]
 
 // Layout components
-export { default as DockNavbar }      from './components/DockNavbar.vue'
-export { default as DockLayout }      from './components/DockLayout.vue'
+export { default as DockNavbar }       from './components/DockNavbar.vue'
+export { default as DockLayout }       from './components/DockLayout.vue'
+export { default as DockSidebarShell } from './components/DockSidebarShell.vue'
 export { default as DockShareButton }      from './components/share/DockShareButton.vue'
 export { default as DockGuestShareButton } from './components/guest/DockGuestShareButton.vue'
+
+// Composables
+export { useDockSidebar } from './composables/useDockSidebar'
+export type { UseDockSidebarReturn } from './composables/useDockSidebar'
 
 // Shared page route helper (lazy-loaded — zero initial bundle cost)
 export { dockSharedRoutes } from './shared-routes'
