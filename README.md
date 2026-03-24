@@ -3,7 +3,7 @@
 **Coordination Layer for Tonic's Ecosystem**
 
 [![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://github.com/tonic-6101/dock/releases)
-[![Frappe](https://img.shields.io/badge/frappe-v15+-green.svg)](https://frappeframework.com)
+[![Frappe](https://img.shields.io/badge/frappe-v16+-green.svg)](https://frappeframework.com)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-orange.svg)](license.txt)
 
 Dock is the coordination layer that gives the Tonic ecosystem a single, consistent experience. Instead of jumping between isolated apps, Dock provides a shared top bar, global search, cross-app notifications, and a people hub — so every app feels like part of one product.
@@ -11,8 +11,8 @@ Dock is the coordination layer that gives the Tonic ecosystem a single, consiste
 ```
 Layer 0  Frappe Core
 Layer 1  Dock          ← you are here
-Layer 2  Domain Apps   (Orga, Micro, Home, Tender, Faktura)
-Layer 3  Service Apps  (Frame, Repo, Jana)
+Layer 2  Domain Apps   (Watch, Orga, Micro, Home)
+Layer 3  Service Apps  (Drive, Repo, Jana)
 ```
 
 Dock is **infrastructure, not a domain app**. It owns the shell; your apps own the content. Every Tonic app works without Dock installed — but with Dock, the experience is seamless.
@@ -63,9 +63,9 @@ Organization-wide defaults (timezone, week start, date format, theme) with per-u
 
 ### Prerequisites
 
-- Frappe Framework v15 or higher
-- Python 3.10+
-- Node.js 18+
+- Frappe Framework v16 or higher
+- Python 3.14+
+- Node.js 24+
 - MariaDB 10.6+
 
 ### Install via Bench
@@ -129,7 +129,7 @@ For full integration docs, see [docs/integration.md](docs/integration.md).
 
 ## Technology Stack
 
-- **Backend**: Frappe Framework, Python 3.10+
+- **Backend**: Frappe Framework, Python 3.14+
 - **Frontend**: Vue 3, TypeScript, Tailwind CSS
 - **UI Components**: FrappeUI
 - **Database**: MariaDB
