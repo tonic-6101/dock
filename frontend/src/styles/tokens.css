@@ -2,23 +2,82 @@
 /* Copyright (C) 2024-2026 Tonic */
 
 /* Ecosystem-wide design tokens.
-   This file is the SINGLE SOURCE OF TRUTH for --dock-* custom properties.
+   This file is the SINGLE SOURCE OF TRUTH for all shared CSS custom properties.
    It is served standalone at /assets/dock/css/dock-tokens.css for domain apps,
    and also imported by Dock's own SPA and Desk CSS entries.
-   Must NOT use Tailwind theme() — must be valid standalone CSS. */
+
+   MUST NOT use Tailwind theme() — must be valid standalone CSS.
+
+   See: ecosystem.localhost/spec/design/unified-design.md */
 
 :root {
+  /* ── Dock chrome (top bar only) ────────────────────────────── */
   --dock-bg:     #ffffff;   /* white */
   --dock-border: #e5e7eb;   /* gray-200 */
   --dock-text:   #111827;   /* gray-900 */
   --dock-icon:   #6b7280;   /* gray-500 */
   --dock-accent: #4f46e5;   /* indigo-600 */
+
+  /* ── App accent (overridden per-app in app-tokens.css) ─────── */
+  /* Defaults to dock slate — apps override with their brand color */
+  --app-accent-50:  #f8fafc;   /* slate-50  */
+  --app-accent-100: #f1f5f9;   /* slate-100 */
+  --app-accent-200: #e2e8f0;   /* slate-200 */
+  --app-accent-300: #cbd5e1;   /* slate-300 */
+  --app-accent-400: #94a3b8;   /* slate-400 */
+  --app-accent-500: #64748b;   /* slate-500 */
+  --app-accent-600: #475569;   /* slate-600 */
+  --app-accent-700: #334155;   /* slate-700 */
+  --app-accent-800: #1e293b;   /* slate-800 */
+  --app-accent-900: #0f172a;   /* slate-900 */
+  --app-accent-950: #020617;   /* slate-950 */
+
+  /* ── Semantic status (shifted hues — see app-colors.md § Reserved Hues) ── */
+  --status-success:    #059669;   /* emerald-600 — not green (Orga) */
+  --status-warning:    #eab308;   /* yellow-500  — not amber (Home) */
+  --status-danger:     #db2777;   /* pink-600    — not red (Faktura) */
+  --status-info:       #0284c7;   /* sky-600     — not blue (Micro) */
+  --status-success-bg: #ecfdf5;   /* emerald-50  */
+  --status-warning-bg: #fefce8;   /* yellow-50   */
+  --status-danger-bg:  #fdf2f8;   /* pink-50     */
+  --status-info-bg:    #f0f9ff;   /* sky-50      */
+
+  /* ── Typography ────────────────────────────────────────────── */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
 }
 
+/* ── Dark mode ─────────────────────────────────────────────── */
 .dark {
   --dock-bg:     #020617;   /* gray-950 */
   --dock-border: #374151;   /* gray-700 */
   --dock-text:   #f3f4f6;   /* gray-100 */
   --dock-icon:   #9ca3af;   /* gray-400 */
   --dock-accent: #818cf8;   /* indigo-400 */
+
+  /* Status backgrounds (dark tint) */
+  --status-success-bg: #022c22;   /* emerald-950 */
+  --status-warning-bg: #422006;   /* yellow-950  */
+  --status-danger-bg:  #500724;   /* pink-950    */
+  --status-info-bg:    #082f49;   /* sky-950     */
+}
+
+/* ── Neutral mode ──────────────────────────────────────────── */
+/* When user selects neutral/minimalist mode in Dock Settings,
+   Dock sets data-color-mode="neutral" on <html>.
+   This overrides all app accent colors to dock slate values,
+   so all apps appear monochrome. App identity relies on icon + label only. */
+
+:root[data-color-mode="neutral"] {
+  --app-accent-50:  #f8fafc;   /* slate-50  */
+  --app-accent-100: #f1f5f9;   /* slate-100 */
+  --app-accent-200: #e2e8f0;   /* slate-200 */
+  --app-accent-300: #cbd5e1;   /* slate-300 */
+  --app-accent-400: #94a3b8;   /* slate-400 */
+  --app-accent-500: #64748b;   /* slate-500 */
+  --app-accent-600: #475569;   /* slate-600 */
+  --app-accent-700: #334155;   /* slate-700 */
+  --app-accent-800: #1e293b;   /* slate-800 */
+  --app-accent-900: #0f172a;   /* slate-900 */
+  --app-accent-950: #020617;   /* slate-950 */
 }
