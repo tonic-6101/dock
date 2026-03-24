@@ -110,10 +110,9 @@ onUnmounted(() => {
   window.removeEventListener('dock:trackVisit', onTrackVisit)
 })
 
-// Jana is a soft dependency
-const janaInstalled = (window as any).frappe?.boot?.installed_apps?.includes('jana')
-  ?? (window as any).dockBoot?.installed_apps?.includes('jana')
-  ?? false
+// Jana is a soft dependency — Frappe v16 boot has `versions` (keyed by app), not `installed_apps`
+const janaInstalled = 'jana' in ((window as any).frappe?.boot?.versions ?? {})
+  || (registeredApps.value as Array<{ app: string }>).some(a => a.app === 'jana')
 
 const DockSidebarToggle   = defineAsyncComponent(() => import('./DockSidebarToggle.vue'))
 const DockAppLabel        = defineAsyncComponent(() => import('./DockAppLabel.vue'))

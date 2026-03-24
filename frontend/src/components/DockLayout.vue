@@ -29,6 +29,7 @@ const DockPanelBackdrop = defineAsyncComponent(() => import('./DockPanelBackdrop
 const DockTimerPanel = defineAsyncComponent(() => import('./DockTimerPanel.vue'))
 const DockContextPanel = defineAsyncComponent(() => import('./DockContextPanel.vue'))
 const DockNotesPanel = defineAsyncComponent(() => import('./DockNotesPanel.vue'))
+const DockJanaPanel = defineAsyncComponent(() => import('./DockJanaPanel.vue'))
 
 const { activePanel, closePanel } = useDockPanels()
 </script>
@@ -44,6 +45,7 @@ const { activePanel, closePanel } = useDockPanels()
       <DockTimerPanel v-if="activePanel === 'timer'" />
       <DockContextPanel v-if="activePanel === 'context'" />
       <DockNotesPanel v-if="activePanel === 'notes'" />
+      <DockJanaPanel v-if="activePanel === 'jana'" />
     </div>
   </div>
 </template>
