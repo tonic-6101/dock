@@ -2,7 +2,7 @@
 
 **Coordination Layer for Tonic's Ecosystem**
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)](https://github.com/tonic-6101/dock/releases)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue.svg)](https://github.com/tonic-6101/dock/releases)
 [![Frappe](https://img.shields.io/badge/frappe-v16+-green.svg)](https://frappeframework.com)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-orange.svg)](license.txt)
 
@@ -169,9 +169,22 @@ npm run dev
 
 ---
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Installation](docs/installation.md) | Install, configure, update, uninstall |
+| [Architecture](docs/architecture.md) | Layer model, boot data, ESM exports, build outputs |
+| [Integration](docs/integration.md) | Step-by-step guide for connecting your app to Dock |
+| [Hook Reference](docs/hooks.md) | All hook types your app can declare |
+| [API Reference](docs/api.md) | 119 whitelisted methods across 17 modules |
+| [Configuration](docs/configuration.md) | Dock Settings & User Preference fields |
+| [Frontend Events](docs/events.md) | CustomEvent bus for cross-app communication |
+| [Troubleshooting](docs/troubleshooting.md) | Known issues, FAQ, Frappe v16 gotchas |
+| [Changelog](docs/changelog.md) | Version history |
+
 ## Support
 
-- **Documentation**: [docs/](docs/)
 - **Issues**: [GitHub Issues](https://github.com/tonic-6101/dock/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/tonic-6101/dock/discussions)
 
