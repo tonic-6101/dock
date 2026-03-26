@@ -2,11 +2,13 @@
 // Copyright (C) 2024-2026 Tonic
 //
 // dock-desk.js entry — loaded via dynamic import() from the IIFE loader
-// (dock.bundle.js). Mounts <DockNavbar /> when frappe.boot.dock.installed is true.
+// (dock.bundle.js). Mounts <DockNavbar /> + panel host when frappe.boot.dock.installed is true.
 
 import './desk-style.css'
-import { createApp } from 'vue'
+import { createApp, h, Fragment, defineAsyncComponent } from 'vue'
 import DockNavbar from './components/DockNavbar.vue'
+
+const DockDeskPanels = defineAsyncComponent(() => import('./components/DockDeskPanels.vue'))
 
 function mountNavbar() {
   const boot = (window as any).frappe?.boot?.dock
@@ -31,7 +33,17 @@ function mountNavbar() {
     }
   }
 
-  createApp(DockNavbar).mount(wrapper)
+  // Mount a single Vue app with both navbar and panel host.
+  // Using Fragment so both render without needing a wrapper element.
+  const app = createApp({
+    render() {
+      return h(Fragment, [
+        h(DockNavbar),
+        h(DockDeskPanels),
+      ])
+    },
+  })
+  app.mount(wrapper)
 }
 
 if (document.readyState === 'loading') {

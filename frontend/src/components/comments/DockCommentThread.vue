@@ -12,6 +12,7 @@ import { __ } from '@/composables/useTranslate'
 import { useComments } from '@/composables/useComments'
 import DockCommentCard from './DockCommentCard.vue'
 import DockCommentInput from './DockCommentInput.vue'
+import DockPromoteToDiscussion from './DockPromoteToDiscussion.vue'
 
 const props = defineProps<{
   referenceDoctype: string
@@ -119,6 +120,13 @@ function setFilter(f: 'all' | 'notes' | 'resolved') {
       {{ __('Replying to comment') }}
       <button class="text-red-500 hover:text-red-700" @click="replyingTo = null">&#x2715;</button>
     </div>
+
+    <!-- Promote to discussion -->
+    <DockPromoteToDiscussion
+      :reference-doctype="referenceDoctype"
+      :reference-name="referenceName"
+      :comment-count="total"
+    />
 
     <!-- Input -->
     <div class="mt-3">

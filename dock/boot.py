@@ -3,6 +3,7 @@
 
 import frappe
 from dock import __version__
+from dock.api.messages import get_message_channels, get_unread_counts
 from dock.api.settings import _get_merged_settings
 
 
@@ -50,11 +51,15 @@ def extend_bootinfo(bootinfo):
         "bridges": _get_bridges(),
         # Activity sources — collected from dock_activity_sources hooks; drives activity feed filters
         "activity_sources": _get_activity_sources(),
-        # Unread discussions — badge count for discussions nav
+        # Messages (#52) — unified communication channels + aggregated unread counts
+        "message_channels": get_message_channels(),
+        "unread_counts": get_unread_counts(),
+        # Backward compat (v0.3.x) — deprecated, use unread_counts.channels.discussions
         "unread_discussions": _get_unread_discussions_count(),
         # Note actions — collected from dock_note_actions hooks; drives note context menus
         "note_actions": _get_note_actions(),
         "bin_count": _get_bin_count(),
+        "pinned_apps": _get_pinned_apps(),
     }
 
 
@@ -91,18 +96,36 @@ def get_boot():
         "settings_sections": _get_settings_sections(),
         "bridges": _get_bridges(),
         "activity_sources": _get_activity_sources(),
+        "message_channels": get_message_channels(),
+        "unread_counts": get_unread_counts(),
         "unread_discussions": _get_unread_discussions_count(),
         "note_actions": _get_note_actions(),
         "bin_count": _get_bin_count(),
+        "pinned_apps": _get_pinned_apps(),
     }
 
 
 _REQUIRED_APP_REGISTRY_FIELDS = {"label", "color", "route"}
 
+# Apps excluded from Tier 3 auto-discovery (they're handled explicitly)
+_INTERNAL_APPS = {"frappe", "dock"}
+
 
 def _get_registered_apps():
+    """Return all apps visible to the current user, grouped by tier.
+
+    Tier 1 (ecosystem): apps declaring dock_app_registry in hooks.py
+    Tier 2 (platform):  Frappe Desk — always present, visibility-controlled
+    Tier 3 (external):  other installed apps, auto-discovered
+    """
+    installed = frappe.get_installed_apps()
+    registered_app_names = set()
     registered = []
-    for app in frappe.get_installed_apps():
+    user = frappe.session.user
+    is_system_manager = "System Manager" in frappe.get_roles(user)
+
+    # — Tier 1: Ecosystem apps (declare dock_app_registry) —
+    for app in installed:
         registry = frappe.get_hooks("dock_app_registry", app_name=app)
         if not registry:
             continue
@@ -117,8 +140,199 @@ def _get_registered_apps():
                 "Dock Hook Validation",
             )
             continue
-        registered.append({"app": app, **unwrapped})
-    return registered
+        # Permission check (existing behavior)
+        if not is_system_manager:
+            has_perm_fn = unwrapped.get("has_permission")
+            if has_perm_fn and not frappe.call(has_perm_fn):
+                continue
+        registered.append({"app": app, "tier": "ecosystem", **unwrapped})
+        registered_app_names.add(app)
+
+    # — Tier 2: Frappe Desk —
+    if _is_app_visible("frappe", user, is_system_manager):
+        registered.append({
+            "app": "frappe",
+            "label": "Desk",
+            "icon": "/assets/frappe/images/frappe-framework-logo.svg",
+            "color": "#0089FF",
+            "route": "/app",
+            "tier": "platform",
+        })
+    registered_app_names.add("frappe")
+
+    # — Tier 3: Other installed apps (auto-discovered) —
+    # Sort by usage frequency for this user (last 30 days)
+    tier3_apps = [a for a in installed if a not in registered_app_names and a not in _INTERNAL_APPS]
+    visit_counts = _get_app_visit_counts(user, tier3_apps) if tier3_apps else {}
+    for app in tier3_apps:
+        if not _is_app_visible(app, user, is_system_manager):
+            continue
+        resolved = _resolve_external_app(app)
+        resolved["visit_count"] = visit_counts.get(app, 0)
+        registered.append({"app": app, "tier": "external", **resolved})
+
+    # Sort Tier 3 by usage frequency (most-used first), then alphabetical
+    ecosystem_and_platform = [a for a in registered if a["tier"] != "external"]
+    external = sorted(
+        [a for a in registered if a["tier"] == "external"],
+        key=lambda a: (-a.get("visit_count", 0), a.get("label", "")),
+    )
+    # Remove visit_count from payload (internal only)
+    for a in external:
+        a.pop("visit_count", None)
+
+    return ecosystem_and_platform + external
+
+
+def _resolve_external_app(app):
+    """Resolve label, icon, color, and route for an unregistered app."""
+    # Label: app_title hook -> humanized name
+    app_title = frappe.get_hooks("app_title", app_name=app)
+    label = app_title[0] if app_title else app.replace("_", " ").title()
+
+    # Icon: app_logo_url hook -> None (frontend renders squircle)
+    app_logo = frappe.get_hooks("app_logo_url", app_name=app)
+    icon = app_logo[0] if app_logo else ""
+
+    # Route: cascading probe
+    route = _resolve_app_route(app)
+
+    return {"label": label, "icon": icon, "color": "", "route": route}
+
+
+def _resolve_app_route(app):
+    """Cascading route resolution for apps without dock_app_registry.
+
+    Priority:
+    1. add_to_apps_screen hook (explicit Frappe registration)
+    2. app_home hook (legacy explicit)
+    3. website_route_rules containing /{app}/ (SPA convention)
+    4. First workspace linked to the app's module
+    5. /app fallback (Frappe desk)
+    """
+    # 1. add_to_apps_screen hook
+    apps_screen = frappe.get_hooks("add_to_apps_screen", app_name=app)
+    if apps_screen:
+        entry = apps_screen[0] if isinstance(apps_screen, list) else apps_screen
+        if isinstance(entry, dict):
+            route = entry.get("route")
+            if isinstance(route, list):
+                route = route[0]
+            if route:
+                return route
+
+    # 2. app_home hook
+    app_home = frappe.get_hooks("app_home", app_name=app)
+    if app_home:
+        home = app_home[0] if isinstance(app_home, list) else app_home
+        if home:
+            return home
+
+    # 3. website_route_rules containing /{app_name}/
+    route_rules = frappe.get_hooks("website_route_rules", app_name=app)
+    if route_rules:
+        for rule in route_rules:
+            if isinstance(rule, list):
+                for r in rule:
+                    if isinstance(r, dict) and f"/{app}" in r.get("from_route", ""):
+                        return f"/{app}"
+            elif isinstance(rule, dict) and f"/{app}" in rule.get("from_route", ""):
+                return f"/{app}"
+
+    # 4. First workspace linked to the app's module
+    try:
+        workspace = frappe.db.get_value(
+            "Workspace",
+            {"module": app.replace("_", " ").title()},
+            "name",
+        )
+        if workspace:
+            return f"/app/{frappe.scrub(workspace)}"
+    except Exception:
+        pass
+
+    # 5. Fallback
+    return "/app"
+
+
+def _is_app_visible(app, user, is_system_manager):
+    """Check if an app should be visible to the given user.
+
+    Layer 1: System Manager always sees all
+    Layer 2: Admin override from Dock Settings (if configured)
+    Layer 3: Auto-detection from app's user_roles hook
+    Layer 4: Default to visible
+    """
+    if is_system_manager:
+        return True
+
+    # Check admin override (Dock App Visibility child table)
+    override = _get_visibility_override(app)
+    if override:
+        if override["mode"] == "Hidden":
+            return False
+        if override["mode"] == "Everyone":
+            return True
+        if override["mode"] == "By Role":
+            user_roles = set(frappe.get_roles(user))
+            return bool(user_roles & set(override.get("roles", [])))
+        # "Auto" falls through to auto-detection below
+
+    # Auto-detect from app's user_roles hook
+    user_roles_hook = frappe.get_hooks("user_roles", app_name=app)
+    if user_roles_hook:
+        declared_roles = set()
+        for entry in user_roles_hook:
+            if isinstance(entry, list):
+                declared_roles.update(entry)
+            elif isinstance(entry, dict):
+                declared_roles.update(entry.values())
+            else:
+                declared_roles.add(entry)
+        if declared_roles:
+            user_roles = set(frappe.get_roles(user))
+            return bool(user_roles & declared_roles)
+
+    # Default: visible to all
+    return True
+
+
+def _get_visibility_override(app):
+    """Read admin override from Dock Settings child table, cached per request."""
+    if not hasattr(frappe.local, "_dock_app_visibility"):
+        overrides = {}
+        try:
+            rows = frappe.get_all(
+                "Dock App Visibility",
+                filters={"parenttype": "Dock Settings"},
+                fields=["app", "mode", "roles"],
+            )
+            for row in rows:
+                overrides[row["app"]] = {
+                    "mode": row["mode"],
+                    "roles": [r.strip() for r in (row.get("roles") or "").split(",") if r.strip()],
+                }
+        except Exception:
+            pass
+        frappe.local._dock_app_visibility = overrides
+    return frappe.local._dock_app_visibility.get(app)
+
+
+def _get_app_visit_counts(user, apps):
+    """Count recent visits per app for usage-frequency ordering (Tier 3)."""
+    if not apps:
+        return {}
+    try:
+        result = frappe.db.sql("""
+            SELECT app, COUNT(*) as visits
+            FROM `tabDock Recent Item`
+            WHERE user = %s AND visited_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+              AND app IN %s
+            GROUP BY app
+        """, (user, apps), as_dict=True)
+        return {r["app"]: r["visits"] for r in result}
+    except Exception:
+        return {}
 
 
 def _get_calendar_sources():
@@ -530,3 +744,18 @@ def _get_bin_count():
                     except Exception:
                         pass
     return total
+
+
+def _get_pinned_apps():
+    """Return the current user's pinned app names list."""
+    import json as _json
+    user = frappe.session.user
+    try:
+        raw = frappe.db.get_value("Dock User Preference", user, "pinned_apps")
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list):
+                return parsed[:6]  # Max 6 pinned apps
+    except Exception:
+        pass
+    return []

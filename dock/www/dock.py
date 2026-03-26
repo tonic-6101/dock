@@ -9,6 +9,7 @@ from dock.boot import (
     _get_recent_items, _get_bookmarks, _get_guest_views, _get_settings_sections,
     _get_activity_sources, _get_unread_discussions_count,
 )
+from dock.api.messages import get_message_channels, get_unread_counts
 from dock.api.settings import _get_merged_settings
 
 
@@ -73,6 +74,8 @@ def get_context(context):
         "guest_views": _get_guest_views(),
         "settings_sections": _get_settings_sections(),
         "activity_sources": _get_activity_sources(),
+        "message_channels": get_message_channels(),
+        "unread_counts": get_unread_counts(),
         "unread_discussions": _get_unread_discussions_count(),
     }
     # Pre-serialized so the template can output it with {{ dock_boot_json }}

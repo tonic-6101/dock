@@ -3,7 +3,7 @@
   Copyright (C) 2024-2026 Tonic
 
   Main top bar component — exported for dynamic import by domain apps.
-  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Calendar | People | Notes | Discussions | Bell | Jana | AppSwitcher | Avatar
+  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Calendar | People | Notes | Messages | Bell | Jana | AppSwitcher | Avatar
 -->
 <script lang="ts">
 export default { name: 'DockNavbar' }
@@ -110,9 +110,13 @@ onUnmounted(() => {
   window.removeEventListener('dock:trackVisit', onTrackVisit)
 })
 
-// Jana is a soft dependency — Frappe v16 boot has `versions` (keyed by app), not `installed_apps`
+// Soft dependencies — Frappe v16 boot has `versions` (keyed by app), not `installed_apps`
 const janaInstalled = 'jana' in ((window as any).frappe?.boot?.versions ?? {})
   || (registeredApps.value as Array<{ app: string }>).some(a => a.app === 'jana')
+const orgaInstalled = 'orga' in ((window as any).frappe?.boot?.versions ?? {})
+  || (registeredApps.value as Array<{ app: string }>).some(a => a.app === 'orga')
+const repoInstalled = 'repo' in ((window as any).frappe?.boot?.versions ?? {})
+  || (registeredApps.value as Array<{ app: string }>).some(a => a.app === 'repo')
 
 const DockSidebarToggle   = defineAsyncComponent(() => import('./DockSidebarToggle.vue'))
 const DockAppLabel        = defineAsyncComponent(() => import('./DockAppLabel.vue'))
@@ -121,7 +125,9 @@ const DockTimerButton     = defineAsyncComponent(() => import('./DockTimerButton
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
 const DockNotesIcon       = defineAsyncComponent(() => import('./DockNotesIcon.vue'))
-const DockDiscussionsIcon = defineAsyncComponent(() => import('./DockDiscussionsIcon.vue'))
+const DockTasksIcon       = defineAsyncComponent(() => import('./DockTasksIcon.vue'))
+const DockCaptureIcon     = defineAsyncComponent(() => import('./DockCaptureIcon.vue'))
+const DockMessagesIcon    = defineAsyncComponent(() => import('./DockMessagesIcon.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -156,7 +162,9 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
       <DockCalendarIcon />
       <DockPeopleIcon />
       <DockNotesIcon />
-      <DockDiscussionsIcon />
+      <DockTasksIcon v-if="orgaInstalled" />
+      <DockCaptureIcon v-if="repoInstalled" />
+      <DockMessagesIcon />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

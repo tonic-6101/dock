@@ -166,6 +166,21 @@ dock_app_registry = {
     "route": "/dock",
 }
 
+# Messages — unified communication entry point (Feature #52)
+# Dock's built-in channel; other apps register via dock_message_channels in their hooks.py
+dock_message_channels = [
+    {
+        "key": "discussions",
+        "label": "Discussions",
+        "icon": "message-square",
+        "app": "dock",
+        "route": "/dock/discussions",
+        "panel_component": "DockDiscussionsPanel",
+        "badge_method": "dock.api.discussion.get_unread_count",
+        "sort_order": 10,
+    },
+]
+
 # Register Dock Event as a timer context type so users can link time entries to calendar events
 watch_timer_contexts = [
     {

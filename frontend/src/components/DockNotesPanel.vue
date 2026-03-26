@@ -15,8 +15,8 @@ export default { name: 'DockNotesPanel' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Pin, Pencil, Trash2, StickyNote, X, Tag, ImagePlus, SquareArrowOutUpRight, Palette } from 'lucide-vue-next'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { Pin, Pencil, Trash2, StickyNote, X, Tag, ImagePlus, SquareArrowOutUpRight } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
 import { uploadFile, pickFiles } from '@/composables/useFileUpload'
@@ -58,6 +58,10 @@ const loading = ref(false)
 const newContent = ref('')
 const newColor = ref('')
 const showNewColorPicker = ref(false)
+const newPinned = ref(false)
+const newTags = ref<string[]>([])
+const showNewTagInput = ref(false)
+const newTagInput = ref('')
 const saving = ref(false)
 
 // ── Context detection ──────────────────────────────────
@@ -137,6 +141,40 @@ function onPaste(e: ClipboardEvent) {
   }
 }
 
+// ── Drag-and-drop ─────────────────────────────────────
+
+const draggingOver = ref(false)
+
+function onPanelDragEnter(e: DragEvent) {
+  if (e.dataTransfer?.types?.includes('Files')) draggingOver.value = true
+}
+function onPanelDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types?.includes('Files')) e.dataTransfer!.dropEffect = 'copy'
+}
+function onPanelDragLeave(e: DragEvent) {
+  const el = e.currentTarget as HTMLElement
+  if (!el?.contains(e.relatedTarget as Node)) draggingOver.value = false
+}
+function onPanelDrop(e: DragEvent) {
+  draggingOver.value = false
+  const files = e.dataTransfer?.files
+  if (!files?.length) return
+  for (const file of Array.from(files)) {
+    if (file.type.startsWith('image/')) doUpload(file)
+  }
+}
+
+// Global safety net: prevent browser from opening dropped files
+const _preventNav = (e: Event) => e.preventDefault()
+onMounted(() => {
+  document.addEventListener('dragover', _preventNav)
+  document.addEventListener('drop', _preventNav)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('dragover', _preventNav)
+  document.removeEventListener('drop', _preventNav)
+})
+
 // ── API calls ──────────────────────────────────────────
 
 async function load() {
@@ -175,11 +213,25 @@ async function createNote() {
       params.reference_name = currentContext.value.docname
     }
     const note = await callApi<Note>('dock.api.notes.create', params)
+    // Pin if toggled
+    if (newPinned.value) {
+      await callApi('dock.api.notes.toggle_pin', { name: note.name })
+      note.pinned = true
+    }
+    // Add tags after creation
+    for (const tag of newTags.value) {
+      await callApi('frappe.client.add_tag', { tag, dt: 'Dock Note', dn: note.name })
+      note.tags.push(tag)
+    }
     notes.value.unshift(note)
     total.value++
     newContent.value = ''
     newColor.value = ''
     showNewColorPicker.value = false
+    newPinned.value = false
+    newTags.value = []
+    showNewTagInput.value = false
+    newTagInput.value = ''
     pendingImages.value = []
     includeContext.value = true
   } finally {
@@ -239,6 +291,25 @@ function onEditKeydown(e: KeyboardEvent) {
   }
   if (e.key === 'Escape') {
     cancelEdit()
+  }
+}
+
+async function attachImageToNote(noteName: string) {
+  const files = await pickFiles('image/*')
+  for (const file of files) {
+    const url = await uploadFile(file)
+    if (!url) continue
+    const note = notes.value.find(n => n.name === noteName)
+    if (!note) continue
+    const imgTag = `<img src="${url}" />`
+    const newContent = note.content + imgTag
+    const old = note.content
+    note.content = newContent
+    try {
+      await callApi('dock.api.notes.update', { name: noteName, content: newContent })
+    } catch {
+      note.content = old
+    }
   }
 }
 
@@ -417,7 +488,12 @@ onMounted(load)
       :style="{
         padding: '0.75rem 1rem',
         borderBottom: '1px solid var(--dock-border)',
+        ...(draggingOver ? { outline: '2px dashed var(--dock-accent)', outlineOffset: '-2px', borderRadius: '0.375rem' } : {}),
       }"
+      @dragenter.prevent="onPanelDragEnter"
+      @dragover.prevent="onPanelDragOver"
+      @dragleave="onPanelDragLeave"
+      @drop.prevent="onPanelDrop"
     >
       <textarea
         v-model="newContent"
@@ -632,6 +708,74 @@ onMounted(load)
           >
             <ImagePlus :style="{ width: '0.875rem', height: '0.875rem' }" />
           </button>
+          <button
+            :style="{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'none',
+              border: 'none',
+              padding: '0.25rem',
+              cursor: 'pointer',
+              color: showNewTagInput ? 'var(--dock-text)' : 'var(--dock-icon)',
+              borderRadius: '0.25rem',
+            }"
+            :title="__('Add tag')"
+            @click="showNewTagInput = !showNewTagInput"
+          >
+            <Tag :style="{ width: '0.875rem', height: '0.875rem' }" />
+          </button>
+          <button
+            :style="{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'none',
+              border: 'none',
+              padding: '0.25rem',
+              cursor: 'pointer',
+              color: newPinned ? 'var(--dock-accent, #6366f1)' : 'var(--dock-icon)',
+              borderRadius: '0.25rem',
+            }"
+            :title="newPinned ? __('Unpin') : __('Pin')"
+            @click="newPinned = !newPinned"
+          >
+            <Pin :style="{ width: '0.875rem', height: '0.875rem' }" />
+          </button>
+        </div>
+        <!-- New note tag chips + input -->
+        <div v-if="showNewTagInput || newTags.length" :style="{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.375rem' }">
+          <span
+            v-for="tag in newTags"
+            :key="tag"
+            :style="{
+              display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+              fontSize: '0.625rem', padding: '0.0625rem 0.375rem',
+              borderRadius: '0.75rem',
+              background: 'var(--dock-accent, #6366f1)', color: '#fff',
+            }"
+          >
+            {{ tag }}
+            <button
+              :style="{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '0.625rem' }"
+              @click="newTags = newTags.filter(t => t !== tag)"
+            >&times;</button>
+          </span>
+          <input
+            v-if="showNewTagInput"
+            v-model="newTagInput"
+            :placeholder="__('Tag...')"
+            :style="{
+              fontSize: '0.6875rem', padding: '0.0625rem 0.375rem',
+              border: '1px solid var(--dock-border)', borderRadius: '0.25rem',
+              background: 'transparent', color: 'var(--dock-text)',
+              outline: 'none', width: '5rem',
+            }"
+            @keydown.enter.prevent="
+              if (newTagInput.trim() && !newTags.includes(newTagInput.trim())) {
+                newTags.push(newTagInput.trim()); newTagInput = ''
+              }
+            "
+            @keydown.escape="showNewTagInput = false"
+          />
         </div>
         <button
           :disabled="(!newContent.trim() && !pendingImages.length) || saving"
@@ -919,25 +1063,42 @@ onMounted(load)
               </div>
             </div>
             <!-- Actions -->
+            <button
+              :title="__('Attach image')"
+              :style="{
+                display: 'flex',
+                alignItems: 'center',
+                background: 'none',
+                border: 'none',
+                padding: '0.125rem',
+                cursor: 'pointer',
+                color: 'var(--dock-icon)',
+                opacity: 0,
+                transition: 'opacity 0.15s',
+              }"
+              class="dock-note-action"
+              @click.stop="attachImageToNote(note.name)"
+            >
+              <ImagePlus :style="{ width: '0.75rem', height: '0.75rem' }" />
+            </button>
             <div :style="{ position: 'relative', display: 'inline-flex' }">
               <button
                 :title="__('Color')"
                 :style="{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'none',
-                  border: 'none',
-                  padding: '0.125rem',
+                  width: '1rem',
+                  height: '1rem',
+                  borderRadius: '50%',
+                  border: note.color ? '1px solid rgba(0,0,0,0.15)' : '1.5px dashed var(--dock-icon)',
+                  background: note.color ? (NOTE_COLORS[note.color] || 'transparent') : 'transparent',
                   cursor: 'pointer',
-                  color: 'var(--dock-icon)',
-                  opacity: 0,
+                  padding: '0',
+                  flexShrink: '0',
+                  opacity: note.color ? 1 : 0,
                   transition: 'opacity 0.15s',
                 }"
                 class="dock-note-action"
                 @click.stop="toggleColorPicker(note.name)"
-              >
-                <Palette :style="{ width: '0.75rem', height: '0.75rem' }" />
-              </button>
+              />
               <!-- Color popover -->
               <div
                 v-if="colorPickerFor === note.name"
@@ -1092,13 +1253,20 @@ onMounted(load)
   opacity: 1 !important;
 }
 
-/* Constrain images in note content — panel is compact */
+/* Images in note content — small horizontal thumbnails */
 .dock-note-item :deep(img) {
-  max-width: 100%;
-  max-height: 120px;
+  display: inline-block;
+  width: 3.5rem;
+  height: 3.5rem;
   object-fit: cover;
   border-radius: 0.375rem;
-  margin: 0.25rem 0;
+  margin: 0.125rem 0.25rem 0.125rem 0;
   cursor: pointer;
+  vertical-align: middle;
+  transition: opacity 0.15s;
+}
+
+.dock-note-item :deep(img:hover) {
+  opacity: 0.8;
 }
 </style>

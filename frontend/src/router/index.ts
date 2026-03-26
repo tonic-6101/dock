@@ -129,6 +129,12 @@ const router = createRouter({
       component: () => import('@/pages/DockDiscussionDetail.vue'),
     },
 
+    {
+      path: '/messages',
+      name: 'dock-messages',
+      component: () => import('@/pages/DockMessagesPage.vue'),
+    },
+
     // ── Catch-all ─────────────────────────────────────────────────────
     {
       path: '/:pathMatch(.*)*',

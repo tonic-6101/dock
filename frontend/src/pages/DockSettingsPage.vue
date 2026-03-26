@@ -21,25 +21,25 @@ function reload() { window.location.reload() }
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-6 py-8 space-y-10">
-    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">{{ __('Dock Settings') }}</h1>
+  <div class="max-w-2xl px-6 py-6">
+    <h1 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">{{ __('Dock Settings') }}</h1>
 
     <div
       v-if="reloadBanner"
-      class="flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
+      class="mb-6 flex items-center justify-between rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300"
     >
       <span>{{ __('Organization settings updated — reload to apply') }}</span>
       <button class="underline ml-4" @click="reload">{{ __('Reload') }}</button>
     </div>
 
-    <DockSettingsPersonal :settings="settings" />
+    <div class="space-y-6">
+      <DockSettingsPersonal :settings="settings" />
 
-    <hr class="border-gray-100 dark:border-gray-700" />
-
-    <DockSettingsOrganization
-      v-if="isDockManager"
-      :settings="settings"
-      @saved="reloadBanner = true"
-    />
+      <DockSettingsOrganization
+        v-if="isDockManager"
+        :settings="settings"
+        @saved="reloadBanner = true"
+      />
+    </div>
   </div>
 </template>

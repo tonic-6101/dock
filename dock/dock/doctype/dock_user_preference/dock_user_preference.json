@@ -12,7 +12,8 @@
   "timezone",
   "week_start",
   "date_format",
-  "ui_language"
+  "ui_language",
+  "pinned_apps"
  ],
  "fields": [
   {
@@ -63,6 +64,12 @@
    "fieldtype": "Data",
    "label": "UI Language",
    "description": "Language code (e.g. de, en). Blank = inherit org default."
+  },
+  {
+   "fieldname": "pinned_apps",
+   "fieldtype": "JSON",
+   "label": "Pinned Apps",
+   "description": "JSON array of pinned app names (e.g. [\"home\", \"watch\"]). Max 6 entries."
   }
  ],
  "links": [],

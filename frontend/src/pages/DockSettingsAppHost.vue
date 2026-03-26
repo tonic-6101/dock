@@ -86,9 +86,9 @@ const activeSection = computed(() => (route.query.section as string) ?? undefine
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-6 py-8">
+  <div class="px-6 py-6">
     <!-- Header -->
-    <h1 v-if="section" class="text-xl font-semibold text-gray-900 dark:text-white mb-8">
+    <h1 v-if="section" class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
       {{ section.label }} {{ __('Settings') }}
     </h1>
 
@@ -100,9 +100,9 @@ const activeSection = computed(() => (route.query.section as string) ?? undefine
     />
 
     <!-- Generic fallback for apps without custom settings -->
-    <div v-else-if="section && !hasCustomBundle" class="space-y-6">
+    <div v-else-if="section && !hasCustomBundle" class="max-w-2xl space-y-6">
       <!-- App info card -->
-      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
         <div class="flex items-center gap-4 mb-4">
           <img
             v-if="registryEntry?.icon"

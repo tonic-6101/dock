@@ -2,6 +2,8 @@
   SPDX-License-Identifier: AGPL-3.0-or-later
   Copyright (C) 2024-2026 Tonic
 
+  DEPRECATED v0.3.0: Use DockMessagesIcon instead. Will be removed in v0.4.0.
+
   Discussions icon in the top bar — navigates to the discussions shared page
   in the current app context (e.g. /orga/discussions) or /dock/discussions.
   Shows unread badge seeded from boot data.

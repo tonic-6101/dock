@@ -76,9 +76,10 @@ watch(language,   val => savePreference('ui_language', val))
 </script>
 
 <template>
-  <section class="space-y-5">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Your Preferences') }}</h2>
+  <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+    <h2 class="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Your Preferences') }}</h2>
 
+    <div class="space-y-5">
     <!-- Theme -->
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Theme') }}</label>
@@ -103,7 +104,7 @@ watch(language,   val => savePreference('ui_language', val))
       <input
         v-model="timezone"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         :placeholder="__('e.g. Europe/Berlin')"
       />
       <p class="mt-1 text-xs text-gray-400">{{ __('Blank = org default') }}: {{ settings.timezone }}</p>
@@ -114,7 +115,7 @@ watch(language,   val => savePreference('ui_language', val))
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Week starts on') }}</label>
       <select
         v-model="weekStart"
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
       >
         <option value="">{{ __('Org default') }}</option>
         <option v-for="o in weekOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -126,7 +127,7 @@ watch(language,   val => savePreference('ui_language', val))
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Date format') }}</label>
       <select
         v-model="dateFormat"
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
       >
         <option value="">{{ __('Org default') }}</option>
         <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
@@ -139,7 +140,7 @@ watch(language,   val => savePreference('ui_language', val))
       <input
         v-model="language"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         :placeholder="__('e.g. en, fr, de')"
       />
       <p class="mt-1 text-xs text-gray-400">{{ __('Blank = org default') }}: {{ settings.uiLanguage }}</p>
@@ -158,5 +159,6 @@ watch(language,   val => savePreference('ui_language', val))
 
     <!-- Save feedback -->
     <p v-if="saved" class="text-xs text-green-600 dark:text-green-400">{{ __('Saved') }}</p>
+    </div>
   </section>
 </template>

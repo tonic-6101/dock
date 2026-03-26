@@ -14,7 +14,7 @@ import { ref, readonly } from 'vue'
  * any open dropdown (and vice versa, handled by the dropdown composable).
  */
 
-export type PanelType = 'people' | 'calendar' | 'notifications' | 'timer' | 'context' | 'notes' | 'jana'
+export type PanelType = 'people' | 'calendar' | 'notifications' | 'timer' | 'context' | 'notes' | 'jana' | 'tasks' | 'capture' | 'account' | 'messages' | 'apps'
 
 const activePanel = ref<PanelType | null>(null)
 

@@ -11,7 +11,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Plus, Pin, PinOff, Pencil, Trash2, Send, StickyNote,
-  ExternalLink, X, Tag, Palette, Check, ImagePlus, SquareArrowOutUpRight,
+  ExternalLink, X, Tag, Check, ImagePlus, SquareArrowOutUpRight,
 } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import { callApi } from '@/composables/useApi'
@@ -21,7 +21,7 @@ import { relativeTime } from '@/composables/useRelativeTime'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import ImageExtension from '@tiptap/extension-image'
-import LinkExtension from '@tiptap/extension-link'
+// Link is included in StarterKit v3 — configure it there to avoid duplicates
 import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
@@ -128,11 +128,30 @@ async function confirmNoteAction() {
 
 // ── Image upload helper ────────────────────────────────
 
-async function uploadAndInsert(file: File, editor: ReturnType<typeof useEditor>['value']) {
+async function uploadAndInsert(
+  file: File,
+  editor: ReturnType<typeof useEditor>['value'],
+  dropCoords?: { x: number; y: number },
+) {
   if (!editor) return
   const fileUrl = await uploadFile(file)
-  if (fileUrl) {
-    editor.chain().focus().setImage({ src: fileUrl }).run()
+  if (!fileUrl) return
+  // Try to resolve the drop position from coordinates; fall back to end of document.
+  let insertPos: number | null = null
+  if (dropCoords) {
+    const pmPos = editor.view.posAtCoords({ left: dropCoords.x, top: dropCoords.y })
+    if (pmPos) insertPos = pmPos.pos
+  }
+  if (insertPos != null) {
+    editor.chain().focus().insertContentAt(insertPos, { type: 'image', attrs: { src: fileUrl } }).run()
+  } else {
+    editor.chain().focus().command(({ tr, dispatch }) => {
+      if (dispatch) {
+        const pos = tr.doc.content.size
+        tr.insert(pos, editor.schema.nodes.image.create({ src: fileUrl }))
+      }
+      return true
+    }).run()
   }
 }
 
@@ -144,60 +163,98 @@ async function attachImageToEditor(editor: ReturnType<typeof useEditor>['value']
   }
 }
 
-// ── Drag-and-drop zone ─────────────────────────────────
-// ProseMirror swallows drop events internally, so we use a capture-phase
-// listener on the wrapping div to intercept file drops before ProseMirror.
+// ── Drag-and-drop ───────────────────────────────────────
+// ProseMirror-view v1.41.6 registers its own drop handler on view.dom in
+// BUBBLE phase.  For file drops the OS puts the file path in
+// dataTransfer text/plain; PM parses that into a text slice and inserts
+// the raw path — completely ignoring the File objects.
+//
+// To intercept BEFORE PM touches the event we register capture-phase
+// listeners directly on view.dom.  On the `drop` event we call
+// stopImmediatePropagation() which kills PM's bubble-phase handler on
+// the same element.  For drops that land on the container padding
+// (outside view.dom), Vue template @drop.prevent on the container
+// catches them as a fallback.
 
-const createDropZone = ref<HTMLElement | null>(null)
-const editDropZone = ref<HTMLElement | null>(null)
 const draggingOver = ref<'create' | 'edit' | null>(null)
 
-function setupDropZone(el: HTMLElement | null, editorRef: () => ReturnType<typeof useEditor>['value'], zone: 'create' | 'edit') {
-  if (!el) return
-  // Use capture phase to intercept before ProseMirror
-  el.addEventListener('dragenter', (e: DragEvent) => {
-    if (e.dataTransfer?.types.includes('Files')) {
-      draggingOver.value = zone
-    }
-  }, true)
-  el.addEventListener('dragover', (e: DragEvent) => {
-    if (e.dataTransfer?.types.includes('Files')) {
-      e.preventDefault()
-      e.stopPropagation()
-      e.dataTransfer.dropEffect = 'copy'
-    }
-  }, true)
-  el.addEventListener('dragleave', (e: DragEvent) => {
-    // Only clear if leaving the container itself
-    if (el && !el.contains(e.relatedTarget as Node)) {
-      draggingOver.value = null
-    }
-  }, true)
-  el.addEventListener('drop', (e: DragEvent) => {
-    draggingOver.value = null
-    const files = e.dataTransfer?.files
-    if (!files?.length) return
-    const hasImages = Array.from(files).some(f => f.type.startsWith('image/'))
-    if (!hasImages) return
-    e.preventDefault()
-    e.stopPropagation()
-    for (const file of Array.from(files)) {
-      if (file.type.startsWith('image/')) {
-        uploadAndInsert(file, editorRef())
+function setupEditorDrop(
+  editorRef: ReturnType<typeof useEditor>,
+  zone: 'create' | 'edit',
+  getEditor: () => ReturnType<typeof useEditor>['value'],
+) {
+  watch(editorRef, (editor) => {
+    if (!editor?.view?.dom) return
+    const dom = editor.view.dom
+
+    dom.addEventListener('dragenter', (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault()
+        draggingOver.value = zone
       }
-    }
-  }, true)
+    }, true)
+
+    dom.addEventListener('dragover', (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault()
+        e.dataTransfer!.dropEffect = 'copy'
+      }
+    }, true)
+
+    dom.addEventListener('dragleave', (e: DragEvent) => {
+      if (!dom.contains(e.relatedTarget as Node)) {
+        draggingOver.value = null
+      }
+    }, true)
+
+    dom.addEventListener('drop', (e: DragEvent) => {
+      draggingOver.value = null
+      const files = e.dataTransfer?.files
+      if (!files?.length) return
+      // Kill the event completely — prevents PM from parsing the file
+      // path as text AND prevents the browser from navigating to it.
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      const coords = { x: e.clientX, y: e.clientY }
+      const imageFiles = Array.from(files).filter((f: File) => f.type.startsWith('image/'))
+      for (const file of imageFiles) {
+        uploadAndInsert(file, getEditor(), coords)
+      }
+    }, true)
+  }, { immediate: true })
+}
+
+// Container fallback handlers (for drops on padding outside the editor)
+function onContainerDragEnter(e: DragEvent, zone: 'create' | 'edit') {
+  if (e.dataTransfer?.types?.includes('Files')) draggingOver.value = zone
+}
+function onContainerDragOver(e: DragEvent) {
+  if (e.dataTransfer?.types?.includes('Files')) e.dataTransfer!.dropEffect = 'copy'
+}
+function onContainerDragLeave(e: DragEvent) {
+  const el = e.currentTarget as HTMLElement
+  if (!el?.contains(e.relatedTarget as Node)) draggingOver.value = null
+}
+function onContainerDrop(e: DragEvent, zone: 'create' | 'edit') {
+  draggingOver.value = null
+  const files = e.dataTransfer?.files
+  if (!files?.length) return
+  const imageFiles = Array.from(files).filter((f: File) => f.type.startsWith('image/'))
+  if (!imageFiles.length) return
+  const editor = zone === 'create' ? createEditor.value : editEditor.value
+  for (const file of imageFiles) {
+    uploadAndInsert(file, editor)
+  }
 }
 
 // ── Tiptap — create editor ────────────────────────────
 
 const createEditor = useEditor({
   extensions: [
-    StarterKit,
+    StarterKit.configure({ link: { openOnClick: false } }),
     TaskList,
     TaskItem.configure({ nested: true }),
     ImageExtension.configure({ inline: true, allowBase64: false }),
-    LinkExtension.configure({ openOnClick: false }),
     Placeholder.configure({ placeholder: __('Write a note...') }),
   ],
   editorProps: {
@@ -224,11 +281,10 @@ const createEditor = useEditor({
 
 const editEditor = useEditor({
   extensions: [
-    StarterKit,
+    StarterKit.configure({ link: { openOnClick: false } }),
     TaskList,
     TaskItem.configure({ nested: true }),
     ImageExtension.configure({ inline: true, allowBase64: false }),
-    LinkExtension.configure({ openOnClick: false }),
     Placeholder.configure({ placeholder: __('Edit note...') }),
   ],
   editorProps: {
@@ -250,6 +306,10 @@ const editEditor = useEditor({
     },
   },
 })
+
+// Wire up capture-phase drop listeners on each editor's view.dom
+setupEditorDrop(createEditor, 'create', () => createEditor.value)
+setupEditorDrop(editEditor, 'edit', () => editEditor.value)
 
 // ── Data loading ───────────────────────────────────────
 
@@ -488,13 +548,20 @@ function colorBorder(color: string): string {
 
 // ── Lifecycle ──────────────────────────────────────────
 
-onMounted(() => load(true))
+// Global safety net: prevent browser from EVER opening a dropped file.
+// This is the same pattern Google Docs / Notion / Slack use.
+const globalDragOver = (e: Event) => e.preventDefault()
+const globalDrop = (e: Event) => e.preventDefault()
 
-// Set up drop zones when template refs become available
-watch(createDropZone, (el) => setupDropZone(el, () => createEditor.value, 'create'))
-watch(editDropZone, (el) => setupDropZone(el, () => editEditor.value, 'edit'))
+onMounted(() => {
+  document.addEventListener('dragover', globalDragOver)
+  document.addEventListener('drop', globalDrop)
+  load(true)
+})
 
 onBeforeUnmount(() => {
+  document.removeEventListener('dragover', globalDragOver)
+  document.removeEventListener('drop', globalDrop)
   createEditor.value?.destroy()
   editEditor.value?.destroy()
 })
@@ -636,11 +703,14 @@ onBeforeUnmount(() => {
     <!-- Create form with Tiptap -->
     <div
       v-if="showCreate"
-      ref="createDropZone"
       class="border rounded-lg p-4 mb-6 relative transition-colors"
       :class="draggingOver === 'create'
         ? 'border-[var(--dock-accent)] border-dashed bg-[var(--dock-accent)]/[0.04]'
         : 'border-[var(--dock-border)]'"
+      @dragenter.prevent="onContainerDragEnter($event, 'create')"
+      @dragover.prevent="onContainerDragOver"
+      @dragleave="onContainerDragLeave"
+      @drop.prevent="onContainerDrop($event, 'create')"
     >
       <!-- Drop overlay hint -->
       <div
@@ -764,9 +834,12 @@ onBeforeUnmount(() => {
             <!-- Edit mode -->
             <div
               v-if="editingName === note.name"
-              ref="editDropZone"
               class="relative transition-colors rounded-md"
               :class="draggingOver === 'edit' ? 'ring-2 ring-[var(--dock-accent)] bg-[var(--dock-accent)]/[0.04]' : ''"
+              @dragenter.prevent="onContainerDragEnter($event, 'edit')"
+              @dragover.prevent="onContainerDragOver"
+              @dragleave="onContainerDragLeave"
+              @drop.prevent="onContainerDrop($event, 'edit')"
             >
               <div
                 v-if="draggingOver === 'edit'"
@@ -803,7 +876,7 @@ onBeforeUnmount(() => {
               v-else
               class="text-sm text-[var(--dock-text)] prose prose-sm max-w-none cursor-text rounded p-0.5
                      hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors
-                     [&_img]:max-w-full [&_img]:max-h-[200px] [&_img]:object-cover [&_img]:rounded-md [&_img]:my-2 [&_img]:cursor-pointer"
+                     [&_img]:inline-block [&_img]:w-16 [&_img]:h-16 [&_img]:object-cover [&_img]:rounded-md [&_img]:mr-1.5 [&_img]:my-0.5 [&_img]:cursor-pointer [&_img]:align-middle [&_img]:hover:opacity-80 [&_img]:transition-opacity"
               :title="__('Click to edit')"
               v-html="note.content"
               @click="onNoteContentClick($event, note)"
@@ -851,12 +924,12 @@ onBeforeUnmount(() => {
             <!-- Color picker -->
             <div class="relative">
               <button
-                class="p-1 rounded text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
+                class="w-4 h-4 rounded-full flex-shrink-0 transition-transform hover:scale-110"
+                :class="note.color ? '' : 'border border-dashed border-[var(--dock-border)]'"
+                :style="{ background: note.color ? colorBorder(note.color) : 'transparent' }"
                 :title="__('Color')"
                 @click.stop="toggleColorPicker(note.name)"
-              >
-                <Palette class="w-3.5 h-3.5" />
-              </button>
+              />
               <div
                 v-if="colorPickerFor === note.name"
                 class="absolute top-full right-0 mt-1 z-10 bg-[var(--dock-bg)] border border-[var(--dock-border)]

@@ -80,6 +80,12 @@ export function dockSharedRoutes(prefix: string = ''): RouteRecordRaw[] {
       meta: { dockShared: true, title: 'Activity' },
     },
     {
+      path: `${p}/messages`,
+      name: 'dock-messages',
+      component: () => import('./pages/DockMessagesPage.vue'),
+      meta: { dockShared: true, title: 'Messages' },
+    },
+    {
       path: `${p}/discussions`,
       name: 'dock-discussions',
       component: () => import('./pages/DockDiscussionsPage.vue'),

@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "creation": "2026-03-26 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "app",
+  "mode",
+  "roles"
+ ],
+ "fields": [
+  {
+   "fieldname": "app",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "App",
+   "reqd": 1,
+   "description": "App name (e.g. erpnext, frappe)"
+  },
+  {
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Visibility",
+   "options": "Auto\nEveryone\nBy Role\nHidden",
+   "default": "Auto",
+   "reqd": 1,
+   "description": "Auto = detect from app roles. Everyone = all users. By Role = specific roles. Hidden = System Manager only."
+  },
+  {
+   "fieldname": "roles",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Roles",
+   "depends_on": "eval:doc.mode=='By Role'",
+   "description": "Comma-separated role names (only when Visibility = By Role)"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-26 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dock",
+ "name": "Dock App Visibility",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

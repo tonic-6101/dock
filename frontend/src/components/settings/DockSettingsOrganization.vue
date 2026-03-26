@@ -76,16 +76,17 @@ async function save() {
 </script>
 
 <template>
-  <section class="space-y-5">
-    <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Organization Defaults') }}</h2>
+  <section class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+    <h2 class="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Organization Defaults') }}</h2>
 
+    <div class="space-y-5">
     <!-- Site label -->
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Site label') }}</label>
       <input
         v-model="siteLabel"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         :placeholder="__('Displayed in the top bar')"
       />
     </div>
@@ -96,7 +97,7 @@ async function save() {
       <input
         v-model="defaultApp"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         placeholder="/app"
       />
     </div>
@@ -107,7 +108,7 @@ async function save() {
       <input
         v-model="timezone"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         placeholder="Europe/Berlin"
       />
     </div>
@@ -117,7 +118,7 @@ async function save() {
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Week starts on') }}</label>
       <select
         v-model="weekStart"
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
       >
         <option v-for="o in weekOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </select>
@@ -128,7 +129,7 @@ async function save() {
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Date format') }}</label>
       <select
         v-model="dateFormat"
-        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
       >
         <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </select>
@@ -140,7 +141,7 @@ async function save() {
       <input
         v-model="language"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         placeholder="en"
       />
     </div>
@@ -151,7 +152,7 @@ async function save() {
       <input
         v-model="currency"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         placeholder="EUR"
       />
     </div>
@@ -162,7 +163,7 @@ async function save() {
       <input
         v-model="numberFormat"
         type="text"
-        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+        class="w-full max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         placeholder="#.###,##"
       />
     </div>
@@ -193,7 +194,7 @@ async function save() {
           type="number"
           min="5"
           max="100"
-          class="w-20 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+          class="w-20 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         />
       </div>
     </div>
@@ -209,6 +210,7 @@ async function save() {
       </button>
       <span v-if="saved"  class="text-xs text-green-600 dark:text-green-400">{{ __('Saved') }}</span>
       <span v-if="error"  class="text-xs text-red-600 dark:text-red-400">{{ error }}</span>
+    </div>
     </div>
   </section>
 </template>

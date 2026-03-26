@@ -338,6 +338,39 @@ def mark_read(name: str) -> None:
             frappe.utils.now_datetime(),
             update_modified=False,
         )
+        # Notify the current user's Messages badge of the count change
+        count = get_unread_count()
+        frappe.publish_realtime(
+            "dock_unread_update",
+            {"channel": "discussions", "count": count},
+            user=user,
+        )
+
+
+@frappe.whitelist()
+def get_unread_count() -> int:
+    """Unread discussion count for the current user.
+
+    Used by dock_message_channels badge_method and boot data.
+    Counts distinct open discussions where the user is a participant
+    and last_reply_at > participant's last_read_at.
+    """
+    user = frappe.session.user
+    if not frappe.db.exists("DocType", "Dock Discussion"):
+        return 0
+    try:
+        result = frappe.db.sql("""
+            SELECT COUNT(DISTINCT dd.name)
+            FROM `tabDock Discussion` dd
+            INNER JOIN `tabDock Discussion Participant` ddp
+                ON ddp.parent = dd.name AND ddp.user = %s
+            WHERE dd.status = 'Open'
+              AND dd.last_reply_at IS NOT NULL
+              AND (ddp.last_read_at IS NULL OR ddp.last_read_at < dd.last_reply_at)
+        """, (user,))
+        return result[0][0] if result else 0
+    except Exception:
+        return 0
 
 
 def _enrich_discussion(doc) -> dict:

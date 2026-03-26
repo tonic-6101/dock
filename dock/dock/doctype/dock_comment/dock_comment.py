@@ -121,11 +121,33 @@ class DockComment(Document):
                     "role": "Participant",
                 })
                 discussion.save(ignore_permissions=True)
+            # Notify participants of unread update (Messages #52)
+            self._publish_unread_update(discussion)
         except Exception:
             frappe.log_error(
                 f"Failed to update discussion stats for {self.reference_name}",
                 "Dock Comment Discussion Stats",
             )
+
+    def _publish_unread_update(self, discussion):
+        """Publish dock_unread_update realtime event to all participants except the author."""
+        for participant in (discussion.participants or []):
+            if participant.user == self.user:
+                continue
+            try:
+                from dock.api.discussion import get_unread_count
+                # Temporarily switch user context to get their count
+                original_user = frappe.session.user
+                frappe.set_user(participant.user)
+                count = get_unread_count()
+                frappe.set_user(original_user)
+                frappe.publish_realtime(
+                    "dock_unread_update",
+                    {"channel": "discussions", "count": count},
+                    user=participant.user,
+                )
+            except Exception:
+                pass
 
 
 def get_permission_query_conditions(user=None):

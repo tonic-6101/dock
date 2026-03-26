@@ -30,6 +30,11 @@ const DockTimerPanel = defineAsyncComponent(() => import('./DockTimerPanel.vue')
 const DockContextPanel = defineAsyncComponent(() => import('./DockContextPanel.vue'))
 const DockNotesPanel = defineAsyncComponent(() => import('./DockNotesPanel.vue'))
 const DockJanaPanel = defineAsyncComponent(() => import('./DockJanaPanel.vue'))
+const DockTasksPanel = defineAsyncComponent(() => import('./DockTasksPanel.vue'))
+const DockCapturePanel = defineAsyncComponent(() => import('./DockCapturePanel.vue'))
+const DockAccountPanel = defineAsyncComponent(() => import('./DockAccountPanel.vue'))
+const DockMessagesPanel = defineAsyncComponent(() => import('./DockMessagesPanel.vue'))
+const DockAppsPanel = defineAsyncComponent(() => import('./DockAppsPanel.vue'))
 
 const { activePanel, closePanel } = useDockPanels()
 </script>
@@ -46,6 +51,11 @@ const { activePanel, closePanel } = useDockPanels()
       <DockContextPanel v-if="activePanel === 'context'" />
       <DockNotesPanel v-if="activePanel === 'notes'" />
       <DockJanaPanel v-if="activePanel === 'jana'" />
+      <DockTasksPanel v-if="activePanel === 'tasks'" />
+      <DockCapturePanel v-if="activePanel === 'capture'" />
+      <DockAccountPanel v-if="activePanel === 'account'" />
+      <DockMessagesPanel v-if="activePanel === 'messages'" />
+      <DockAppsPanel v-if="activePanel === 'apps'" />
     </div>
   </div>
 </template>

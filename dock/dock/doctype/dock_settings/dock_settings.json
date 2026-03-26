@@ -27,7 +27,9 @@
   "section_bin",
   "bin_retention_days",
   "auto_purge_enabled",
-  "app_order"
+  "app_order",
+  "section_app_visibility",
+  "app_visibility"
  ],
  "fields": [
   {
@@ -173,6 +175,18 @@
    "label": "App Order",
    "options": "Dock App Order",
    "description": "Controls order of apps in the top bar app switcher"
+  },
+  {
+   "fieldname": "section_app_visibility",
+   "fieldtype": "Section Break",
+   "label": "App Visibility"
+  },
+  {
+   "fieldname": "app_visibility",
+   "fieldtype": "Table",
+   "label": "App Visibility",
+   "options": "Dock App Visibility",
+   "description": "Override which apps are visible to which roles. When empty, all apps use automatic detection."
   }
  ],
  "icon": "settings",
