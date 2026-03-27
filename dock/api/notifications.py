@@ -35,6 +35,10 @@ def publish(
             frappe.ValidationError,
         )
 
+    # Respect user's muted notification types
+    if _is_type_muted(for_user, notification_type):
+        return None
+
     doc = frappe.get_doc({
         "doctype": "Dock Notification",
         "for_user": for_user,
@@ -106,7 +110,7 @@ def get_list(
 
 
 @frappe.whitelist()
-def mark_read(notification_names: list) -> None:
+def mark_read(notification_names: str | list) -> None:
     """Mark one or more notifications as read."""
     if isinstance(notification_names, str):
         import json
@@ -138,7 +142,7 @@ def mark_all_read(app: str = None) -> None:
 
 
 @frappe.whitelist()
-def delete(notification_names: list) -> None:
+def delete(notification_names: str | list) -> None:
     """Bulk delete notifications."""
     if isinstance(notification_names, str):
         import json
@@ -146,3 +150,17 @@ def delete(notification_names: list) -> None:
 
     for name in notification_names:
         frappe.delete_doc("Dock Notification", name, ignore_permissions=True)
+
+
+def _is_type_muted(user: str, notification_type: str) -> bool:
+    """Check if a user has muted a specific notification type."""
+    import json as _json
+
+    try:
+        raw = frappe.db.get_value("Dock User Preference", user, "muted_notification_types")
+        if not raw:
+            return False
+        muted = _json.loads(raw)
+        return notification_type in muted
+    except Exception:
+        return False

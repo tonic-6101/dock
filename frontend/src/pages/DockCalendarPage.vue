@@ -57,6 +57,9 @@ const STORAGE_VIEW   = 'dock.calendar.view'
 
 const { settings, calendarSources, userCalendars } = useDockBoot()
 const weekStartMonday = computed(() => (settings.value?.week_start ?? 'Monday') === 'Monday')
+const showWeekends = computed(() => (settings.value?.calendar_show_weekends ?? '1') !== '0')
+const workingHoursStart = computed(() => parseInt((settings.value?.calendar_working_hours_start ?? '08:00').split(':')[0], 10))
+const timeFormat = computed(() => (settings.value?.calendar_time_format ?? '') as '' | '12h' | '24h')
 
 // User calendars (owned + shared)
 const myCalendars = ref<DockCalendar[]>([])
@@ -73,7 +76,9 @@ const renamingCal = ref<string | null>(null)
 const renameTitle = ref('')
 
 const view = ref<CalendarView>(
-  (localStorage.getItem(STORAGE_VIEW) as CalendarView | null) ?? 'week'
+  (localStorage.getItem(STORAGE_VIEW) as CalendarView | null)
+  ?? (settings.value?.calendar_default_view as CalendarView | undefined)
+  ?? 'week'
 )
 const hiddenApps = ref<Set<string>>(
   new Set(JSON.parse(localStorage.getItem(STORAGE_HIDDEN) || '[]') as string[])
@@ -116,11 +121,24 @@ function startOfWeek(d: Date): Date {
 
 function formatTime(dt: string): string {
   if (!dt) return ''
-  return new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  if (timeFormat.value === '12h') opts.hour12 = true
+  else if (timeFormat.value === '24h') opts.hour12 = false
+  return new Date(dt).toLocaleTimeString([], opts)
 }
 
 function formatDateShort(d: Date): string {
   return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function formatHourLabel(h: number): string {
+  if (timeFormat.value === '12h') {
+    if (h === 0) return '12 AM'
+    if (h < 12) return `${h} AM`
+    if (h === 12) return '12 PM'
+    return `${h - 12} PM`
+  }
+  return `${String(h).padStart(2, '0')}:00`
 }
 
 function eventColor(ev: DockEvent): string {
@@ -168,6 +186,12 @@ const weekDays = computed<Date[]>(() =>
     d.setDate(weekStart.value.getDate() + i)
     return d
   })
+)
+
+const displayDays = computed<Date[]>(() =>
+  showWeekends.value
+    ? weekDays.value
+    : weekDays.value.filter(d => d.getDay() !== 0 && d.getDay() !== 6)
 )
 
 const weekLabel = computed(() => {
@@ -453,7 +477,12 @@ function onSlotClick(day: Date, hour: number) {
 }
 
 function scrollToCurrentTime() {
-  nextTick(() => { if (gridRef.value) gridRef.value.scrollTop = Math.max(0, currentTimeTop.value - 200) })
+  nextTick(() => {
+    if (!gridRef.value) return
+    // Scroll to working hours start, or current time if within working hours
+    const workTop = workingHoursStart.value * HOUR_HEIGHT
+    gridRef.value.scrollTop = Math.max(0, Math.min(currentTimeTop.value, workTop) - 20)
+  })
 }
 
 function toggleSource(app: string) {
@@ -785,7 +814,7 @@ onUnmounted(() => {
         <div class="flex border-b border-[var(--dock-border)] shrink-0">
           <div class="w-14 shrink-0" />
           <div
-            v-for="day in weekDays" :key="dateKey(day)"
+            v-for="day in displayDays" :key="dateKey(day)"
             class="flex-1 text-center py-1 border-l border-[var(--dock-border)]"
             role="columnheader"
           >
@@ -801,7 +830,7 @@ onUnmounted(() => {
           <div class="w-14 shrink-0 flex items-center justify-end pr-2">
             <span class="text-[9px] text-[var(--dock-icon)]">{{ __('All day') }}</span>
           </div>
-          <div v-for="day in weekDays" :key="dateKey(day)" class="flex-1 border-l border-[var(--dock-border)] p-0.5">
+          <div v-for="day in displayDays" :key="dateKey(day)" class="flex-1 border-l border-[var(--dock-border)] p-0.5">
             <div
               v-for="ev in allDayEventsForDay(day)" :key="ev.name"
               role="button" :aria-label="`${ev.title} · ${ev.source_app}`"
@@ -818,10 +847,10 @@ onUnmounted(() => {
                 v-for="h in 23" :key="h"
                 class="absolute right-2 text-[10px] text-[var(--dock-icon)] leading-none"
                 :style="{ top: `${h * HOUR_HEIGHT - 6}px` }"
-              >{{ String(h).padStart(2, '0') }}:00</div>
+              >{{ formatHourLabel(h) }}</div>
             </div>
             <div
-              v-for="day in weekDays" :key="dateKey(day)"
+              v-for="day in displayDays" :key="dateKey(day)"
               class="flex-1 relative border-l border-[var(--dock-border)]"
               role="gridcell"
             >
@@ -898,7 +927,7 @@ onUnmounted(() => {
                 v-for="h in 23" :key="h"
                 class="absolute right-2 text-[10px] text-[var(--dock-icon)] leading-none"
                 :style="{ top: `${h * HOUR_HEIGHT - 6}px` }"
-              >{{ String(h).padStart(2, '0') }}:00</div>
+              >{{ formatHourLabel(h) }}</div>
             </div>
             <div class="flex-1 relative border-l border-[var(--dock-border)]" role="gridcell">
               <div

@@ -116,8 +116,8 @@ const apps = computed(() => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-6 py-8">
-    <h1 class="text-xl font-semibold text-[var(--dock-text)] mb-6">{{ __('Notifications') }}</h1>
+  <div class="max-w-2xl px-6 py-8">
+    <h1 class="text-2xl font-bold text-[var(--dock-text)] mb-6">{{ __('Notifications') }}</h1>
 
     <!-- Filters -->
     <div class="flex flex-wrap gap-2 mb-4">

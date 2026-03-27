@@ -90,10 +90,10 @@ async function submit(andOpen = false) {
 
 <template>
   <!-- Overlay on mobile -->
-  <div class="fixed inset-0 z-30 sm:relative sm:inset-auto" @click.self="emit('close')">
+  <div class="dock-person-create-overlay fixed inset-0 z-30" @click.self="emit('close')">
     <!-- Panel -->
     <aside
-      class="fixed right-0 top-0 h-full w-full sm:w-96 z-40
+      class="dock-person-create-panel fixed right-0 top-0 h-full w-full z-40
              bg-[var(--dock-bg)] border-l border-[var(--dock-border)]
              flex flex-col shadow-xl"
     >
@@ -235,3 +235,16 @@ async function submit(andOpen = false) {
     </aside>
   </div>
 </template>
+
+<style scoped>
+/* ── Desktop: overlay becomes inline container, panel gets fixed width ── */
+@media (min-width: 640px) {
+  .dock-person-create-overlay {
+    position: relative;
+    inset: auto;
+  }
+  .dock-person-create-panel {
+    width: 24rem; /* w-96 = 384px */
+  }
+}
+</style>

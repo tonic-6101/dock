@@ -25,6 +25,7 @@ export { default as DockGuestShareButton } from './components/guest/DockGuestSha
 // Composables
 export { useDockSidebar } from './composables/useDockSidebar'
 export type { UseDockSidebarReturn } from './composables/useDockSidebar'
+export { useDockPanels } from './composables/useDockPanels'
 
 // Shared page route helper (lazy-loaded — zero initial bundle cost)
 export { dockSharedRoutes } from './shared-routes'

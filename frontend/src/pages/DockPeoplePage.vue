@@ -246,10 +246,10 @@ onMounted(() => {
 <template>
   <div class="flex h-full relative">
     <!-- Main content -->
-    <div class="flex-1 min-w-0 max-w-3xl mx-auto px-6 py-8">
+    <div class="flex-1 min-w-0 max-w-3xl px-6 py-8">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-xl font-semibold text-[var(--dock-text)]">{{ __('People') }}</h1>
+        <h1 class="text-2xl font-bold text-[var(--dock-text)]">{{ __('People') }}</h1>
         <button
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-md
                  bg-[var(--dock-accent)] text-white text-sm font-medium

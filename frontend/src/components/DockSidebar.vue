@@ -105,10 +105,9 @@ function isActive(item: NavItem): boolean {
 }
 
 const sidebarClasses = computed<string>(() => [
-  'dock-sidebar bg-dock-600 flex-shrink-0 flex flex-col transition-all duration-200',
+  'dock-sidebar dock-sidebar-responsive bg-dock-600 flex-shrink-0 flex flex-col transition-all duration-200',
   collapsed.value ? 'w-16' : 'w-52',
-  'max-sm:fixed max-sm:left-0 max-sm:top-14 max-sm:h-[calc(100vh-3.5rem)] max-sm:z-40',
-  mobileOpen.value ? 'max-sm:translate-x-0' : 'max-sm:-translate-x-full',
+  mobileOpen.value ? 'dock-sidebar-mobile-open' : 'dock-sidebar-mobile-closed',
 ].join(' '))
 
 const itemClasses = (item: NavItem): string => [
@@ -210,7 +209,33 @@ const iconClasses = (item: NavItem): string => [
   <!-- Mobile backdrop -->
   <div
     v-if="mobileOpen"
-    class="fixed inset-0 bg-black/50 z-30 sm:hidden"
+    class="dock-sidebar-backdrop fixed inset-0 bg-black/50 z-30"
     @click="closeMobile()"
   />
 </template>
+
+<style scoped>
+/* ── Mobile: sidebar is fixed overlay ── */
+@media (max-width: 639px) {
+  .dock-sidebar-responsive {
+    position: fixed;
+    left: 0;
+    top: 3.5rem; /* 56px — matches top bar height */
+    height: calc(100vh - 3.5rem);
+    z-index: 40;
+  }
+  .dock-sidebar-mobile-open {
+    transform: translateX(0);
+  }
+  .dock-sidebar-mobile-closed {
+    transform: translateX(-100%);
+  }
+}
+
+/* ── Desktop: backdrop hidden ── */
+@media (min-width: 640px) {
+  .dock-sidebar-backdrop {
+    display: none;
+  }
+}
+</style>

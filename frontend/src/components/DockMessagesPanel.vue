@@ -11,7 +11,7 @@ export default { name: 'DockMessagesPanel' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent, type Component, shallowRef } from 'vue'
 import { __ } from '@/composables/useTranslate'
 import { useDockPanels } from '@/composables/useDockPanels'
 import { useMessages } from '@/composables/useMessages'
@@ -20,6 +20,38 @@ import DockDiscussionsPanel from './discussions/DockDiscussionsPanel.vue'
 
 const { closePanel } = useDockPanels()
 const { channels, isSingleChannel, channelUnread, messagesUrl } = useMessages()
+
+/** Registry of built-in panel components. External apps register via dock_message_channels hook. */
+const builtinPanels: Record<string, Component> = {
+  DockDiscussionsPanel,
+}
+
+/** Cache for dynamically loaded external channel components. */
+const asyncPanelCache: Record<string, Component> = {}
+
+/** Resolve the panel component for a channel — built-in or async-loaded from app bundle. */
+function resolvePanelComponent(channel: { key: string; panel_component?: string; app?: string }): Component | null {
+  if (!channel.panel_component) return null
+  // Built-in component
+  if (builtinPanels[channel.panel_component]) return builtinPanels[channel.panel_component]
+  // Cached async component
+  const cacheKey = `${channel.app}/${channel.panel_component}`
+  if (asyncPanelCache[cacheKey]) return asyncPanelCache[cacheKey]
+  // Load from app's ESM bundle (convention: /assets/{app}/js/{app}-messages.esm.js)
+  const comp = defineAsyncComponent(() =>
+    import(/* @vite-ignore */ `/assets/${channel.app}/js/${channel.app}-messages.esm.js`)
+      .then(mod => mod[channel.panel_component!] ?? mod.default)
+  )
+  asyncPanelCache[cacheKey] = comp
+  return comp
+}
+
+/** Active panel component for the current tab. */
+const activePanelComponent = computed(() => {
+  const channel = channels.value.find(c => c.key === activeTab.value)
+  if (!channel) return null
+  return resolvePanelComponent(channel)
+})
 
 const activeTab = ref<string>('')
 
@@ -92,13 +124,24 @@ function onTabKeydown(e: KeyboardEvent, index: number) {
       </button>
     </div>
 
-    <!-- Channel content — built-in Discussions rendered directly -->
-    <DockDiscussionsPanel
-      v-if="activeTab === 'discussions'"
+    <!-- Channel content — resolved dynamically from built-in or external bundles -->
+    <component
+      v-if="activePanelComponent"
+      :is="activePanelComponent"
       :close="closePanel"
       :open-full-page="openFullPage"
     />
 
-    <!-- Future: external channel components loaded via defineAsyncComponent -->
+    <!-- Fallback when channel has no panel_component -->
+    <div
+      v-else-if="activeTab"
+      class="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center"
+    >
+      <p class="text-sm text-gray-500">{{ __('Open the full page to view this channel.') }}</p>
+      <button
+        class="text-sm font-medium text-[var(--dock-accent)] hover:underline"
+        @click="openFullPage"
+      >{{ __('Open full page') }}</button>
+    </div>
   </DockPanelShell>
 </template>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tender app icon — orange squircle with gavel -->
+<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+    <rect width="160" height="160" rx="40" fill="#ea580c"/>
+    <g fill="none" stroke="#ffffff" stroke-width="10.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 90.109 85.297 L 45.695 129.706 C 41.305 134.097 34.186 134.098 29.795 129.708 C 25.403 125.318 25.402 118.199 29.792 113.808 L 74.221 69.394"/>
+        <path d="M 100.707 101.195 L 132.503 69.399"/>
+        <path d="M 129.854 72.049 L 87.459 29.654"/>
+        <path d="M 58.313 58.801 L 90.109 27.005"/>
+        <path d="M 60.962 56.151 L 103.357 98.546"/>
+    </g>
+</svg>

@@ -42,12 +42,12 @@ function navigate(route: string) {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-6 py-8">
+  <div class="max-w-3xl px-6 py-8">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
         <Bookmark class="w-6 h-6 text-[var(--dock-icon)]" />
-        <h1 class="text-xl font-semibold text-[var(--dock-text)]">{{ __('Bookmarks') }}</h1>
+        <h1 class="text-2xl font-bold text-[var(--dock-text)]">{{ __('Bookmarks') }}</h1>
         <span
           v-if="bookmarks.length"
           class="text-xs text-[var(--dock-icon)] bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full"

@@ -13,7 +13,18 @@
   "week_start",
   "date_format",
   "ui_language",
-  "pinned_apps"
+  "pinned_apps",
+  "section_calendar",
+  "calendar_default_view",
+  "calendar_time_format",
+  "calendar_show_weekends",
+  "calendar_working_hours_start",
+  "calendar_working_hours_end",
+  "section_people",
+  "people_display_name_format",
+  "people_card_fields",
+  "section_notifications",
+  "muted_notification_types"
  ],
  "fields": [
   {
@@ -70,6 +81,75 @@
    "fieldtype": "JSON",
    "label": "Pinned Apps",
    "description": "JSON array of pinned app names (e.g. [\"home\", \"watch\"]). Max 6 entries."
+  },
+  {
+   "fieldname": "section_calendar",
+   "fieldtype": "Section Break",
+   "label": "Calendar"
+  },
+  {
+   "fieldname": "calendar_default_view",
+   "fieldtype": "Select",
+   "label": "Default Calendar View",
+   "options": "\nweek\nmonth\nday\nagenda",
+   "description": "Blank = week"
+  },
+  {
+   "fieldname": "calendar_time_format",
+   "fieldtype": "Select",
+   "label": "Time Format",
+   "options": "\n12h\n24h",
+   "description": "Blank = browser default"
+  },
+  {
+   "fieldname": "calendar_show_weekends",
+   "fieldtype": "Select",
+   "label": "Show Weekends",
+   "options": "\n1\n0",
+   "description": "Blank = show (1)"
+  },
+  {
+   "fieldname": "calendar_working_hours_start",
+   "fieldtype": "Select",
+   "label": "Working Hours Start",
+   "options": "\n00:00\n01:00\n02:00\n03:00\n04:00\n05:00\n06:00\n07:00\n08:00\n09:00\n10:00\n11:00\n12:00",
+   "description": "Blank = 08:00"
+  },
+  {
+   "fieldname": "calendar_working_hours_end",
+   "fieldtype": "Select",
+   "label": "Working Hours End",
+   "options": "\n12:00\n13:00\n14:00\n15:00\n16:00\n17:00\n18:00\n19:00\n20:00\n21:00\n22:00\n23:00\n00:00",
+   "description": "Blank = 18:00"
+  },
+  {
+   "fieldname": "section_people",
+   "fieldtype": "Section Break",
+   "label": "People"
+  },
+  {
+   "fieldname": "people_display_name_format",
+   "fieldtype": "Select",
+   "label": "Display Name Format",
+   "options": "\nfirst_last\nlast_first",
+   "description": "Blank = First Last"
+  },
+  {
+   "fieldname": "people_card_fields",
+   "fieldtype": "JSON",
+   "label": "Contact Card Fields",
+   "description": "JSON array of field names to show on contact cards. Blank = default set."
+  },
+  {
+   "fieldname": "section_notifications",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "fieldname": "muted_notification_types",
+   "fieldtype": "JSON",
+   "label": "Muted Notification Types",
+   "description": "JSON array of notification type keys the user has muted. Empty = all enabled."
   }
  ],
  "links": [],

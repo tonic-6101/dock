@@ -227,8 +227,8 @@ function formatSessionTime(ts: string): string {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto px-6 py-8 space-y-10">
-    <h1 class="text-xl font-semibold text-gray-900 dark:text-white">{{ __('My Account') }}</h1>
+  <div class="max-w-2xl px-6 py-8 space-y-6">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('My Account') }}</h1>
 
     <!-- Loading -->
     <div v-if="loading" class="text-sm text-gray-400">{{ __('Loading...') }}</div>
@@ -305,7 +305,7 @@ function formatSessionTime(ts: string): string {
             <input
               v-model="firstName"
               type="text"
-              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
             />
           </div>
           <div>
@@ -315,7 +315,7 @@ function formatSessionTime(ts: string): string {
             <input
               v-model="lastName"
               type="text"
-              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
             />
           </div>
         </div>
@@ -353,7 +353,7 @@ function formatSessionTime(ts: string): string {
                 v-model="oldPassword"
                 :type="showOldPassword ? 'text' : 'password'"
                 :placeholder="__('Current password')"
-                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 pr-9 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 pr-9 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
               />
               <button
                 type="button"
@@ -370,7 +370,7 @@ function formatSessionTime(ts: string): string {
                 v-model="newPassword"
                 :type="showNewPassword ? 'text' : 'password'"
                 :placeholder="__('New password')"
-                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 pr-9 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 pr-9 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
               />
               <button
                 type="button"
@@ -386,7 +386,7 @@ function formatSessionTime(ts: string): string {
               v-model="confirmPassword"
               type="password"
               :placeholder="__('Confirm new password')"
-              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-white"
+              class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
             />
           </div>
 

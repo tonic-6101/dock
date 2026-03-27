@@ -27,6 +27,8 @@ def extend_bootinfo(bootinfo):
         "user_calendars": _get_user_calendars(),
         # notification_types: dict keyed by type for O(1) icon/label resolution
         "notification_types": _get_notification_types(),
+        # Muted notification types — user's personal mute list
+        "muted_notification_types": _get_muted_notification_types(),
         # Bell badge — avoids extra API call on mount
         "unread_notifications": frappe.db.count(
             "Dock Notification",
@@ -80,6 +82,7 @@ def get_boot():
         "calendar_sources": _get_calendar_sources(),
         "user_calendars": _get_user_calendars(),
         "notification_types": _get_notification_types(),
+        "muted_notification_types": _get_muted_notification_types(),
         "unread_notifications": frappe.db.count(
             "Dock Notification",
             {"for_user": frappe.session.user, "read": 0},
@@ -585,10 +588,15 @@ def _get_search_sections():
         for section_list in hook_sections:
             items = section_list if isinstance(section_list, list) else [section_list]
             for s in items:
-                sections.append({
+                entry = {
                     "label": s.get("label"),
                     "doctype": s.get("doctype"),
-                })
+                }
+                # Include route_template so frontend can resolve URL slug → DocType
+                rt = s.get("route_template")
+                if rt:
+                    entry["route_template"] = rt
+                sections.append(entry)
         if sections:
             result[app] = sections
     return result
@@ -756,6 +764,22 @@ def _get_pinned_apps():
             parsed = _json.loads(raw)
             if isinstance(parsed, list):
                 return parsed[:6]  # Max 6 pinned apps
+    except Exception:
+        pass
+    return []
+
+
+def _get_muted_notification_types():
+    """Return the current user's muted notification type keys."""
+    import json as _json
+
+    user = frappe.session.user
+    try:
+        raw = frappe.db.get_value("Dock User Preference", user, "muted_notification_types")
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list):
+                return parsed
     except Exception:
         pass
     return []

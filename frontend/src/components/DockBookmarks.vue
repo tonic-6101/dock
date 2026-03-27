@@ -2,88 +2,99 @@
   SPDX-License-Identifier: AGPL-3.0-or-later
   Copyright (C) 2024-2026 Tonic
 
-  "Pinned" section shown above the app grid in DockAppSwitcher.
+  "Bookmarks" section shown above the app grid in DockAppsPanel.
+  Compact single-column list, limited to 5 most recent.
   Hidden when the user has no bookmarks.
-  Edit mode: ✎ → drag to reorder → "Done" → reorder() API call.
+  "See all" link to full bookmarks page when there are more.
 -->
 <script lang="ts">
 export default { name: 'DockBookmarks' }
 </script>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Pencil } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { Bookmark as BookmarkIcon } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
-import { useBookmarks } from '@/composables/useBookmarks'
+import { useBookmarks, type Bookmark } from '@/composables/useBookmarks'
 import { useDockBoot } from '@/composables/useDockBoot'
-import DockBookmarkTile from './DockBookmarkTile.vue'
 
 const emit = defineEmits<{ close: [] }>()
 
-const { settings } = useDockBoot()
-const { bookmarks, removeBookmark, reorderBookmarks } = useBookmarks()
-const editMode = ref(false)
+const MAX_VISIBLE = 5
 
-// Drag-and-drop state
-const dragIdx = ref<number | null>(null)
+const { settings, registeredApps } = useDockBoot()
+const { bookmarks } = useBookmarks()
 
-function onDragStart(idx: number) { dragIdx.value = idx }
-function onDragOver(e: DragEvent, idx: number) {
-  e.preventDefault()
-  if (dragIdx.value === null || dragIdx.value === idx) return
-  const moved = bookmarks.value.splice(dragIdx.value, 1)[0]
-  bookmarks.value.splice(idx, 0, moved)
-  dragIdx.value = idx
-}
-function onDrop() {
-  dragIdx.value = null
-  reorderBookmarks(bookmarks.value.map(b => b.name))
+const visibleBookmarks = computed(() => bookmarks.value.slice(0, MAX_VISIBLE))
+const hasMore = computed(() => bookmarks.value.length > MAX_VISIBLE)
+
+function appColor(bm: Bookmark): string {
+  const reg = (registeredApps.value as Array<{ app: string; color?: string }>)
+    .find(a => a.app === bm.app)
+  return reg?.color ?? 'var(--dock-icon)'
 }
 
-function finishEdit() {
-  editMode.value = false
+function routeFor(bm: Bookmark): string {
+  return `/${bm.app}/${bm.doctype}/${encodeURIComponent(bm.docname)}`
 }
 
-function navigate(route: string) {
-  window.location.href = route
+function navigate(bm: Bookmark) {
+  window.location.href = routeFor(bm)
   emit('close')
+}
+
+const sectionLabelStyle = {
+  fontSize: '0.6875rem',
+  fontWeight: '600',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.05em',
+  color: 'var(--dock-icon)',
+  marginBottom: '0.5rem',
+  paddingLeft: '0.25rem',
 }
 </script>
 
 <template>
-  <div v-if="bookmarks.length && settings?.enable_bookmarks !== false" class="px-4 pt-3 pb-2">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-2">
-      <span class="text-[10px] font-semibold uppercase tracking-wider text-[var(--dock-icon)]">
-        {{ __('Pinned') }}
-      </span>
-      <button
-        class="text-[var(--dock-icon)] hover:text-[var(--dock-text)] transition-colors"
-        :aria-label="__('Edit bookmarks')"
-        :aria-pressed="editMode"
-        @click="editMode ? finishEdit() : (editMode = true)"
-      >
-        <span v-if="editMode" class="text-[10px] font-semibold">{{ __('Done') }}</span>
-        <Pencil v-else class="w-3.5 h-3.5" />
-      </button>
-    </div>
+  <div v-if="bookmarks.length && settings?.enable_bookmarks !== false">
+    <div :style="sectionLabelStyle">{{ __('Bookmarks') }}</div>
 
-    <!-- Grid -->
-    <div class="grid grid-cols-3 gap-2">
-      <DockBookmarkTile
-        v-for="(bm, idx) in bookmarks"
+    <!-- Compact list -->
+    <div class="flex flex-col">
+      <a
+        v-for="bm in visibleBookmarks"
         :key="bm.name"
-        :bookmark="bm"
-        :edit-mode="editMode"
-        :draggable="editMode"
-        @dragstart="onDragStart(idx)"
-        @dragover="(e: DragEvent) => onDragOver(e, idx)"
-        @drop="onDrop"
-        @remove="removeBookmark"
-        @navigate="navigate"
-      />
+        :href="routeFor(bm)"
+        class="flex items-center gap-2.5 px-2 py-1 rounded-lg
+               hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        style="height: 2rem"
+        @click.prevent="navigate(bm)"
+      >
+        <!-- Color dot -->
+        <span
+          class="w-2 h-2 rounded-full flex-shrink-0"
+          :style="{ background: appColor(bm) }"
+        />
+        <!-- Label -->
+        <span class="text-sm text-[var(--dock-text)] truncate flex-1 leading-none">
+          {{ bm.label }}
+        </span>
+        <!-- Doctype hint -->
+        <span class="text-[10px] text-[var(--dock-icon)] flex-shrink-0">
+          {{ bm.doctype }}
+        </span>
+      </a>
     </div>
 
-    <div class="mt-2 border-b border-[var(--dock-border)]" />
+    <!-- "See all" link when there are more -->
+    <a
+      v-if="hasMore"
+      href="/dock/bookmarks"
+      class="block text-xs text-[var(--dock-accent)] hover:underline mt-1 pl-2"
+      @click="emit('close')"
+    >
+      {{ __('See all bookmarks') }}
+    </a>
+
+    <div class="mt-3 border-b border-[var(--dock-border)]" />
   </div>
 </template>

@@ -29,7 +29,13 @@
   "auto_purge_enabled",
   "app_order",
   "section_app_visibility",
-  "app_visibility"
+  "app_visibility",
+  "section_calendar",
+  "calendar_default_view",
+  "calendar_time_format",
+  "calendar_show_weekends",
+  "calendar_working_hours_start",
+  "calendar_working_hours_end"
  ],
  "fields": [
   {
@@ -187,6 +193,50 @@
    "label": "App Visibility",
    "options": "Dock App Visibility",
    "description": "Override which apps are visible to which roles. When empty, all apps use automatic detection."
+  },
+  {
+   "fieldname": "section_calendar",
+   "fieldtype": "Section Break",
+   "label": "Calendar Defaults"
+  },
+  {
+   "fieldname": "calendar_default_view",
+   "fieldtype": "Select",
+   "label": "Default Calendar View",
+   "options": "\nweek\nmonth\nday\nagenda",
+   "default": "week",
+   "description": "Org-wide default. Users can override in personal settings."
+  },
+  {
+   "fieldname": "calendar_time_format",
+   "fieldtype": "Select",
+   "label": "Time Format",
+   "options": "\n12h\n24h",
+   "description": "Blank = browser default. Users can override."
+  },
+  {
+   "fieldname": "calendar_show_weekends",
+   "fieldtype": "Select",
+   "label": "Show Weekends",
+   "options": "\n1\n0",
+   "default": "1",
+   "description": "1 = show, 0 = hide. Users can override."
+  },
+  {
+   "fieldname": "calendar_working_hours_start",
+   "fieldtype": "Select",
+   "label": "Working Hours Start",
+   "options": "\n00:00\n01:00\n02:00\n03:00\n04:00\n05:00\n06:00\n07:00\n08:00\n09:00\n10:00\n11:00\n12:00",
+   "default": "08:00",
+   "description": "Org default start of working hours. Users can override."
+  },
+  {
+   "fieldname": "calendar_working_hours_end",
+   "fieldtype": "Select",
+   "label": "Working Hours End",
+   "options": "\n12:00\n13:00\n14:00\n15:00\n16:00\n17:00\n18:00\n19:00\n20:00\n21:00\n22:00\n23:00\n00:00",
+   "default": "18:00",
+   "description": "Org default end of working hours. Users can override."
   }
  ],
  "icon": "settings",

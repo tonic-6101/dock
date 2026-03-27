@@ -118,7 +118,7 @@ const activeSection = computed(() => (route.query.section as string) ?? undefine
             {{ section.label.charAt(0) }}
           </div>
           <div>
-            <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ section.label }}</h2>
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ section.label }}</h2>
             <p v-if="appVersion" class="text-xs text-gray-500 dark:text-gray-400">v{{ appVersion }}</p>
           </div>
         </div>

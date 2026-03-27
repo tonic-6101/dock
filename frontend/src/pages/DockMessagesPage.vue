@@ -11,7 +11,7 @@ export default { name: 'DockMessagesPage' }
 </script>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, defineAsyncComponent, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { __ } from '@/composables/useTranslate'
 import { useMessages, type MessageChannel } from '@/composables/useMessages'
@@ -24,7 +24,6 @@ const activeTab = ref<string>('')
 // Single-channel redirect
 onMounted(() => {
   if (isSingleChannel.value && channels.value[0]?.route) {
-    // Use window.location for full-path routes (avoids router base doubling)
     window.location.replace(channels.value[0].route)
     return
   }
@@ -39,10 +38,36 @@ watch(channels, (chs) => {
   }
 }, { immediate: true })
 
-function navigateToChannel(channel: MessageChannel) {
-  if (channel.route) {
-    window.location.href = channel.route
-  }
+/** Cache for dynamically loaded external channel page components. */
+const asyncPageCache: Record<string, Component> = {}
+
+/** Resolve the page component for a channel — async-loaded from app bundle. */
+function resolvePageComponent(channel: MessageChannel): Component | null {
+  if (!channel.page_component) return null
+  const cacheKey = `${channel.app}/${channel.page_component}`
+  if (asyncPageCache[cacheKey]) return asyncPageCache[cacheKey]
+  const comp = defineAsyncComponent(() =>
+    import(/* @vite-ignore */ `/assets/${channel.app}/js/${channel.app}-messages.esm.js`)
+      .then(mod => mod[channel.page_component!] ?? mod.default)
+  )
+  asyncPageCache[cacheKey] = comp
+  return comp
+}
+
+/** Active page component for the current tab. */
+const activePageComponent = computed(() => {
+  const channel = channels.value.find(c => c.key === activeTab.value)
+  if (!channel) return null
+  return resolvePageComponent(channel)
+})
+
+/** Active channel object. */
+const activeChannel = computed(() =>
+  channels.value.find(c => c.key === activeTab.value) ?? null
+)
+
+function selectTab(channel: MessageChannel) {
+  activeTab.value = channel.key
 }
 
 function onTabKeydown(e: KeyboardEvent, index: number) {
@@ -80,7 +105,7 @@ function onTabKeydown(e: KeyboardEvent, index: number) {
         :class="activeTab === channel.key
           ? 'text-[var(--dock-text)]'
           : 'text-gray-500 hover:text-[var(--dock-text)]'"
-        @click="navigateToChannel(channel)"
+        @click="selectTab(channel)"
         @keydown="onTabKeydown($event, idx)"
       >
         {{ __(channel.label) }}
@@ -96,8 +121,26 @@ function onTabKeydown(e: KeyboardEvent, index: number) {
       </button>
     </div>
 
+    <!-- Channel content — rendered inline when page_component is available -->
+    <div v-if="activePageComponent" class="flex-1 overflow-auto">
+      <component :is="activePageComponent" />
+    </div>
+
+    <!-- Fallback: channel without page_component — show link to channel route -->
+    <div
+      v-else-if="activeChannel && activeChannel.route"
+      class="flex-1 flex flex-col items-center justify-center gap-4 text-center"
+    >
+      <p class="text-sm text-gray-500">{{ __('This channel opens in its own page.') }}</p>
+      <a
+        :href="activeChannel.route"
+        class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium
+               text-white bg-[var(--dock-accent)] rounded-lg hover:opacity-90 transition-opacity"
+      >{{ __(activeChannel.label) }}</a>
+    </div>
+
     <!-- Empty state when no channels -->
-    <div v-if="channels.length === 0" class="flex-1 flex items-center justify-center text-gray-500 text-sm">
+    <div v-else-if="channels.length === 0" class="flex-1 flex items-center justify-center text-gray-500 text-sm">
       {{ __('No communication channels configured.') }}
     </div>
   </div>

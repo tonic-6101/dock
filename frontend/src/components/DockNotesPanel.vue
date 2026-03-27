@@ -25,7 +25,7 @@ import { useDockPanels } from '@/composables/useDockPanels'
 import DockPanelShell from './DockPanelShell.vue'
 
 const { closePanel } = useDockPanels()
-const { registeredApps, noteActions } = useDockBoot()
+const { dock, registeredApps, noteActions } = useDockBoot()
 
 const NOTE_COLORS: Record<string, string> = {
   yellow: '#eab308',
@@ -80,6 +80,22 @@ const contextLabel = computed(() => {
   if (!currentContext.value) return null
   return currentContext.value.docname
 })
+
+/** Resolve a URL slug (e.g. "projects") to a DocType (e.g. "Orga Project")
+ *  by matching against route_template patterns in boot search_sections. */
+function resolveDoctype(app: string, slug: string): string | null {
+  const sections = (dock.value?.search_sections ?? {}) as Record<string, { doctype: string; route_template?: string }[]>
+  const appSections = sections[app]
+  if (!appSections) return null
+  for (const s of appSections) {
+    if (!s.route_template) continue
+    // route_template looks like "/orga/projects/{name}" — extract the slug part
+    const parts = s.route_template.split('/')
+    // Match /<app>/<slug>/{name} pattern
+    if (parts.length >= 3 && parts[2] === slug) return s.doctype
+  }
+  return null
+}
 
 // Whether user wants the context link (opt-out dismissable)
 const includeContext = ref(true)
@@ -210,7 +226,11 @@ async function createNote() {
     if (newColor.value) params.color = newColor.value
     // Pass context if detected and user hasn't dismissed it
     if (includeContext.value && currentContext.value) {
-      params.reference_name = currentContext.value.docname
+      const doctype = resolveDoctype(currentContext.value.app, currentContext.value.slug)
+      if (doctype) {
+        params.reference_doctype = doctype
+        params.reference_name = currentContext.value.docname
+      }
     }
     const note = await callApi<Note>('dock.api.notes.create', params)
     // Pin if toggled
@@ -256,8 +276,14 @@ const editingName = ref<string | null>(null)
 const editContent = ref('')
 
 function startEdit(note: Note) {
+  // If note has rich HTML content (images, formatting), open full page editor instead
+  const hasRichHtml = /<(img|table|ul|ol|h[1-6]|blockquote|pre)\b/i.test(note.content)
+  if (hasRichHtml) {
+    window.location.href = notesPageUrl.value
+    return
+  }
   editingName.value = note.name
-  // Strip HTML tags for plain text editing in panel
+  // For plain-text notes, extract text content for the textarea
   editContent.value = note.content.replace(/<[^>]*>/g, '').trim()
 }
 

@@ -11,7 +11,7 @@ export default { name: 'DockAppGrid' }
 </script>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { __ } from '@/composables/useTranslate'
 import type { AppEntry } from '@/types/apps'
 
@@ -21,11 +21,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   navigate: [app: AppEntry]
-  contextmenu: [event: MouseEvent, app: AppEntry]
 }>()
 
 const gridRef = ref<HTMLElement | null>(null)
 const currentPath = ref(window.location.pathname)
+const brokenIcons: Record<string, boolean> = reactive({})
 
 const appRows = computed(() => {
   const rows: AppEntry[][] = []
@@ -41,11 +41,6 @@ function isActive(app: AppEntry): boolean {
 function navigateTo(app: AppEntry) {
   document.documentElement.style.setProperty('--dock-accent', app.color || '')
   emit('navigate', app)
-}
-
-function onContextMenu(e: MouseEvent, app: AppEntry) {
-  e.preventDefault()
-  emit('contextmenu', e, app)
 }
 
 /** Deterministic color from app name for Tier 3 squircles */
@@ -107,14 +102,14 @@ function onGridKeydown(e: KeyboardEvent) {
           }"
           :title="app.tier === 'external' && app.route === '/app' ? __('This app hasn\'t registered with Dock') : undefined"
           @click.prevent="navigateTo(app)"
-          @contextmenu="onContextMenu($event, app)"
         >
           <span class="w-12 h-12 flex items-center justify-center flex-shrink-0">
             <img
-              v-if="app.icon"
+              v-if="app.icon && !brokenIcons[app.app]"
               :src="app.icon"
               :alt="app.label"
               class="w-full h-full object-contain rounded-xl"
+              @error="brokenIcons[app.app] = true"
             />
             <!-- Fallback: squircle with color + first letter -->
             <svg

@@ -18,6 +18,13 @@ export interface DockSettings {
   recentItemsLimit: number
   siteLabel: string
   defaultApp: string
+  calendarDefaultView: 'week' | 'month' | 'day' | 'agenda'
+  calendarTimeFormat: '' | '12h' | '24h'
+  calendarShowWeekends: boolean
+  calendarWorkingHoursStart: string
+  calendarWorkingHoursEnd: string
+  peopleDisplayNameFormat: 'first_last' | 'last_first'
+  peopleCardFields: string[]
 }
 
 /** Merged settings from boot (user pref → org default → fallback).
@@ -43,5 +50,17 @@ export function useDockSettings() {
     recentItemsLimit:  (s.value?.recent_items_limit  as number) ?? 20,
     siteLabel:         (s.value?.site_label        as string)  ?? '',
     defaultApp:        (s.value?.default_app       as string)  ?? '/app',
+    calendarDefaultView:       (s.value?.calendar_default_view as 'week' | 'month' | 'day' | 'agenda') ?? 'week',
+    calendarTimeFormat:        (s.value?.calendar_time_format  as '' | '12h' | '24h') ?? '',
+    calendarShowWeekends:      (s.value?.calendar_show_weekends as string) !== '0',
+    calendarWorkingHoursStart: (s.value?.calendar_working_hours_start as string) ?? '08:00',
+    calendarWorkingHoursEnd:   (s.value?.calendar_working_hours_end   as string) ?? '18:00',
+    peopleDisplayNameFormat:   (s.value?.people_display_name_format  as 'first_last' | 'last_first') ?? 'first_last',
+    peopleCardFields:          (() => {
+      const raw = s.value?.people_card_fields
+      if (Array.isArray(raw)) return raw as string[]
+      if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { /* fall through */ } }
+      return ['email_id', 'phone', 'company_name']
+    })(),
   }))
 }

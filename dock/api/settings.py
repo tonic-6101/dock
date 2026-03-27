@@ -13,6 +13,13 @@ def save_user_preference(
     week_start: str = None,
     date_format: str = None,
     ui_language: str = None,
+    calendar_default_view: str = None,
+    calendar_time_format: str = None,
+    calendar_show_weekends: str = None,
+    calendar_working_hours_start: str = None,
+    calendar_working_hours_end: str = None,
+    people_display_name_format: str = None,
+    people_card_fields: str = None,
 ) -> dict:
     """
     Upsert Dock User Preference for the current user (autoname = user).
@@ -38,15 +45,53 @@ def save_user_preference(
         doc.date_format = date_format
     if ui_language is not None:
         doc.ui_language = ui_language
+    if calendar_default_view is not None:
+        doc.calendar_default_view = calendar_default_view
+    if calendar_time_format is not None:
+        doc.calendar_time_format = calendar_time_format
+    if calendar_show_weekends is not None:
+        doc.calendar_show_weekends = calendar_show_weekends
+    if calendar_working_hours_start is not None:
+        doc.calendar_working_hours_start = calendar_working_hours_start
+    if calendar_working_hours_end is not None:
+        doc.calendar_working_hours_end = calendar_working_hours_end
+    if people_display_name_format is not None:
+        doc.people_display_name_format = people_display_name_format
+    if people_card_fields is not None:
+        doc.people_card_fields = people_card_fields
 
     doc.save(ignore_permissions=True)
     return _get_merged_settings(user)
+
+
+@frappe.whitelist()
+def save_notification_preferences(muted_notification_types: str | list) -> dict:
+    """Save the user's muted notification types. Accepts JSON array of type keys."""
+    import json as _json
+
+    if isinstance(muted_notification_types, str):
+        muted_notification_types = _json.loads(muted_notification_types)
+    if not isinstance(muted_notification_types, list):
+        frappe.throw(_("muted_notification_types must be a list"), frappe.ValidationError)
+
+    user = frappe.session.user
+    if frappe.db.exists("Dock User Preference", user):
+        doc = frappe.get_doc("Dock User Preference", user)
+    else:
+        doc = frappe.new_doc("Dock User Preference")
+        doc.user = user
+
+    doc.muted_notification_types = _json.dumps(muted_notification_types)
+    doc.save(ignore_permissions=True)
+    return {"muted_notification_types": muted_notification_types}
 
 
 _ORG_FIELDS = {
     "site_label", "default_app", "timezone", "week_start", "date_format",
     "ui_language", "currency", "number_format",
     "enable_global_timer", "enable_bookmarks", "enable_recent_items", "recent_items_limit",
+    "calendar_default_view", "calendar_time_format", "calendar_show_weekends",
+    "calendar_working_hours_start", "calendar_working_hours_end",
 }
 
 
@@ -134,4 +179,35 @@ def _get_merged_settings(user: str) -> dict:
         "privacy_policy_url": org.get("privacy_policy_url") or "",
         "notification_retention_days": org.get("notification_retention_days") or 90,
         "guest_session_default_expiry_days": org.get("guest_session_default_expiry_days") or 30,
+        "calendar_default_view": resolve(
+            pref.calendar_default_view if pref else None,
+            org.get("calendar_default_view"),
+            "week",
+        ),
+        "calendar_time_format": resolve(
+            pref.calendar_time_format if pref else None,
+            org.get("calendar_time_format"),
+            "",
+        ),
+        "calendar_show_weekends": resolve(
+            pref.calendar_show_weekends if pref else None,
+            org.get("calendar_show_weekends"),
+            "1",
+        ),
+        "calendar_working_hours_start": resolve(
+            pref.calendar_working_hours_start if pref else None,
+            org.get("calendar_working_hours_start"),
+            "08:00",
+        ),
+        "calendar_working_hours_end": resolve(
+            pref.calendar_working_hours_end if pref else None,
+            org.get("calendar_working_hours_end"),
+            "18:00",
+        ),
+        "people_display_name_format": (
+            pref.people_display_name_format if pref and pref.get("people_display_name_format") else None
+        ) or "first_last",
+        "people_card_fields": (
+            pref.people_card_fields if pref and pref.get("people_card_fields") else None
+        ) or '["email_id","phone","company_name"]',
     }

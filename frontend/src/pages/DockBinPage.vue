@@ -205,7 +205,7 @@ onMounted(() => {
   <div class="p-6 min-h-full">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 m-0">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">
         {{ __('Bin') }}
       </h1>
       <button
@@ -246,14 +246,14 @@ onMounted(() => {
           :placeholder="__('Search deleted items...')"
           class="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700
                  rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
-                 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600"
+                 focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
         />
       </div>
       <select
         v-model="sortBy"
         class="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700
                rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300
-               focus:outline-none focus:ring-2 focus:ring-gray-300"
+               focus:outline-none focus:ring-2 focus:ring-accent-500 dark:focus:ring-accent-400"
       >
         <option value="deleted_on">{{ __('Newest first') }}</option>
         <option value="label">{{ __('Name A\u2013Z') }}</option>

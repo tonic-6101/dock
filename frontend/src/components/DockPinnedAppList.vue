@@ -10,7 +10,7 @@ export default { name: 'DockPinnedAppList' }
 </script>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { MoreVertical, Pin } from 'lucide-vue-next'
 import { __ } from '@/composables/useTranslate'
 import type { AppEntry } from '@/types/apps'
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 
 const currentPath = ref(window.location.pathname)
 const menuOpen = ref<string | null>(null)
+const brokenIcons: Record<string, boolean> = reactive({})
 
 function isActive(app: AppEntry): boolean {
   if (app.route === '/app') return false
@@ -74,10 +75,11 @@ function fallbackColor(app: AppEntry): string {
       <!-- Icon (20px) -->
       <span class="w-5 h-5 flex items-center justify-center flex-shrink-0">
         <img
-          v-if="app.icon"
+          v-if="app.icon && !brokenIcons[app.app]"
           :src="app.icon"
           :alt="app.label"
           class="w-full h-full object-contain rounded"
+          @error="brokenIcons[app.app] = true"
         />
         <svg v-else viewBox="0 0 20 20" class="w-full h-full">
           <rect width="20" height="20" rx="4" :fill="fallbackColor(app)" />

@@ -63,12 +63,14 @@ class DockComment(Document):
             self.append("mentions", {"user": user_id})
 
     def after_insert(self):
-        """Send notifications for mentions and update discussion stats if applicable."""
-        self._notify_mentions()
+        """Send notifications for mentions, discussion replies, and update stats."""
+        mentioned_users = self._notify_mentions()
         self._update_discussion_stats()
+        self._notify_discussion_reply(mentioned_users)
 
-    def _notify_mentions(self):
-        """Publish a Dock Notification for each mentioned user."""
+    def _notify_mentions(self) -> set:
+        """Publish a Dock Notification for each mentioned user. Returns set of notified users."""
+        notified = set()
         for mention in self.mentions:
             if mention.user == self.user:
                 continue  # Don't notify self
@@ -88,11 +90,54 @@ class DockComment(Document):
                     if self.reference_doctype == "Dock Discussion"
                     else None,
                 )
+                notified.add(mention.user)
             except Exception:
                 frappe.log_error(
                     f"Failed to notify {mention.user} of mention in {self.name}",
                     "Dock Comment Mention Notification",
                 )
+        return notified
+
+    def _notify_discussion_reply(self, already_notified: set):
+        """Notify discussion participants of a new reply (skip author + already-mentioned)."""
+        if self.reference_doctype != "Dock Discussion":
+            return
+        try:
+            participants = frappe.get_all(
+                "Dock Discussion Participant",
+                filters={"parent": self.reference_name},
+                pluck="user",
+            )
+            # Also notify the discussion owner
+            owner = frappe.db.get_value("Dock Discussion", self.reference_name, "owner")
+            recipients = set(participants)
+            if owner:
+                recipients.add(owner)
+            recipients.discard(self.user)  # Don't notify self
+            recipients -= already_notified  # Don't double-notify mentioned users
+
+            discussion_title = frappe.db.get_value(
+                "Dock Discussion", self.reference_name, "title"
+            ) or self.reference_name
+            author_name = frappe.utils.get_fullname(self.user)
+
+            from dock.api.notifications import publish
+            for user in recipients:
+                publish(
+                    for_user=user,
+                    from_app="dock",
+                    notification_type="discussion_reply",
+                    title=_("{0} replied to {1}").format(author_name, discussion_title),
+                    message=self.content[:200] if self.content else "",
+                    reference_doctype="Dock Discussion",
+                    reference_name=self.reference_name,
+                    action_url=f"/dock/discussions/{self.reference_name}",
+                )
+        except Exception:
+            frappe.log_error(
+                f"Failed to notify discussion participants for {self.reference_name}",
+                "Dock Discussion Reply Notification",
+            )
 
     def _update_discussion_stats(self):
         """If this comment is a reply to a Dock Discussion, update its counters."""

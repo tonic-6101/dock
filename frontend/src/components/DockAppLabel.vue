@@ -7,7 +7,7 @@ export default { name: 'DockAppLabel' }
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDockBoot } from '@/composables/useDockBoot'
 import dockIconUrl from '@/assets/dock-icon.svg'
 
@@ -30,12 +30,17 @@ const label = computed(() => {
   return raw.charAt(0).toUpperCase() + raw.slice(1)
 })
 
-const hasIcon = computed(() => !!activeApp.value?.icon)
+const iconBroken = ref(false)
+
+const hasIcon = computed(() => !!activeApp.value?.icon && !iconBroken.value)
 
 const iconSrc = computed(() => {
   if (activeApp.value?.icon) return activeApp.value.icon
   return dockIconUrl
 })
+
+// Reset broken state when navigating to a different app
+watch(() => activeApp.value?.app, () => { iconBroken.value = false })
 
 const iconAlt = computed(() => activeApp.value?.label || 'Dock')
 
@@ -54,6 +59,7 @@ const appColor = computed(() => activeApp.value?.color ?? 'var(--dock-accent)')
       :src="iconSrc"
       :alt="iconAlt"
       class="h-6 w-6 rounded-md flex-shrink-0"
+      @error="iconBroken = true"
     />
     <svg
       v-else

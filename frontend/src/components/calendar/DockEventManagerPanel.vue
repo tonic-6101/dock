@@ -200,13 +200,12 @@ async function handleDelete() {
 <template>
   <!-- Mobile backdrop -->
   <div
-    class="fixed inset-0 bg-black/50 z-30 lg:hidden"
+    class="dock-event-backdrop fixed inset-0 bg-black/50 z-30"
     @click="emit('close')"
   />
 
   <aside
-    class="fixed inset-y-0 right-0 w-full max-w-sm z-50
-           lg:relative lg:z-auto lg:w-80 lg:max-w-none lg:inset-y-auto lg:right-auto
+    class="dock-event-panel fixed inset-y-0 right-0 w-full max-w-sm z-50
            bg-[var(--dock-bg)] border-l border-[var(--dock-border)]
            flex flex-col flex-shrink-0 overflow-hidden transition-all"
     role="dialog"
@@ -553,3 +552,20 @@ async function handleDelete() {
 
   </aside>
 </template>
+
+<style scoped>
+/* ── Desktop: panel is inline, backdrop hidden ── */
+@media (min-width: 1024px) {
+  .dock-event-backdrop {
+    display: none;
+  }
+  .dock-event-panel {
+    position: relative;
+    z-index: auto;
+    width: 20rem; /* w-80 */
+    max-width: none;
+    inset: auto;
+    right: auto;
+  }
+}
+</style>
