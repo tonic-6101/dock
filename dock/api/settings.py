@@ -64,15 +64,22 @@ def save_user_preference(
     return _get_merged_settings(user)
 
 
-@frappe.whitelist()
-def save_notification_preferences(muted_notification_types: str | list) -> dict:
-    """Save the user's muted notification types. Accepts JSON array of type keys."""
-    import json as _json
+_VALID_CHANNELS = {"bell", "email", "both"}
 
-    if isinstance(muted_notification_types, str):
-        muted_notification_types = _json.loads(muted_notification_types)
-    if not isinstance(muted_notification_types, list):
-        frappe.throw(_("muted_notification_types must be a list"), frappe.ValidationError)
+
+@frappe.whitelist()
+def save_notification_preferences(
+    muted_notification_types: str | list = None,
+    muted_apps: str | list = None,
+    app_delivery_channels: str | dict = None,
+    event_reminder_enabled: int = None,
+    event_reminder_minutes: int = None,
+) -> dict:
+    """
+    Save the user's notification preferences. All params are optional — only non-None
+    values are persisted, so callers can update a single field without touching others.
+    """
+    import json as _json
 
     user = frappe.session.user
     if frappe.db.exists("Dock User Preference", user):
@@ -81,9 +88,51 @@ def save_notification_preferences(muted_notification_types: str | list) -> dict:
         doc = frappe.new_doc("Dock User Preference")
         doc.user = user
 
-    doc.muted_notification_types = _json.dumps(muted_notification_types)
+    if muted_notification_types is not None:
+        if isinstance(muted_notification_types, str):
+            muted_notification_types = _json.loads(muted_notification_types)
+        if not isinstance(muted_notification_types, list):
+            frappe.throw(_("muted_notification_types must be a list"), frappe.ValidationError)
+        doc.muted_notification_types = _json.dumps(muted_notification_types)
+
+    if muted_apps is not None:
+        if isinstance(muted_apps, str):
+            muted_apps = _json.loads(muted_apps)
+        if not isinstance(muted_apps, list):
+            frappe.throw(_("muted_apps must be a list"), frappe.ValidationError)
+        doc.muted_apps = _json.dumps(muted_apps)
+
+    if app_delivery_channels is not None:
+        if isinstance(app_delivery_channels, str):
+            app_delivery_channels = _json.loads(app_delivery_channels)
+        if not isinstance(app_delivery_channels, dict):
+            frappe.throw(_("app_delivery_channels must be a dict"), frappe.ValidationError)
+        for app_name, ch in app_delivery_channels.items():
+            if ch not in _VALID_CHANNELS:
+                frappe.throw(
+                    _("Invalid channel '{0}' for app '{1}'. Must be bell, email, or both.").format(ch, app_name),
+                    frappe.ValidationError,
+                )
+        doc.app_delivery_channels = _json.dumps(app_delivery_channels)
+
+    if event_reminder_enabled is not None:
+        doc.event_reminder_enabled = int(event_reminder_enabled)
+
+    if event_reminder_minutes is not None:
+        mins = int(event_reminder_minutes)
+        if mins < 1:
+            frappe.throw(_("Reminder minutes must be at least 1"), frappe.ValidationError)
+        doc.event_reminder_minutes = mins
+
     doc.save(ignore_permissions=True)
-    return {"muted_notification_types": muted_notification_types}
+
+    return {
+        "muted_notification_types": _json.loads(doc.muted_notification_types or "[]"),
+        "muted_apps": _json.loads(doc.muted_apps or "[]"),
+        "app_delivery_channels": _json.loads(doc.app_delivery_channels or "{}"),
+        "event_reminder_enabled": int(doc.event_reminder_enabled or 0),
+        "event_reminder_minutes": int(doc.event_reminder_minutes or 15),
+    }
 
 
 _ORG_FIELDS = {

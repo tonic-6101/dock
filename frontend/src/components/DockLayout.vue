@@ -35,6 +35,8 @@ const DockCapturePanel = defineAsyncComponent(() => import('./DockCapturePanel.v
 const DockAccountPanel = defineAsyncComponent(() => import('./DockAccountPanel.vue'))
 const DockMessagesPanel = defineAsyncComponent(() => import('./DockMessagesPanel.vue'))
 const DockAppsPanel = defineAsyncComponent(() => import('./DockAppsPanel.vue'))
+const DockNotificationsPanel = defineAsyncComponent(() => import('./DockNotificationsPanel.vue'))
+const DockBriefingPanel = defineAsyncComponent(() => import('./DockBriefingPanel.vue'))
 
 const { activePanel, closePanel } = useDockPanels()
 </script>
@@ -56,6 +58,8 @@ const { activePanel, closePanel } = useDockPanels()
       <DockAccountPanel v-if="activePanel === 'account'" />
       <DockMessagesPanel v-if="activePanel === 'messages'" />
       <DockAppsPanel v-if="activePanel === 'apps'" />
+      <DockNotificationsPanel v-if="activePanel === 'notifications'" />
+      <DockBriefingPanel v-if="activePanel === 'briefing'" />
     </div>
   </div>
 </template>

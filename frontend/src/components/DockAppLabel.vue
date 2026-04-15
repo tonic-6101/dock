@@ -19,9 +19,45 @@ const { settings, registeredApps } = useDockBoot()
 
 type RegApp = { app: string; label: string; icon: string; color?: string; route: string }
 
+/** Resolve the owning app from a /desk/ URL by mapping DocType → module → app. */
+function resolveAppFromDeskPath(path: string, apps: RegApp[]): RegApp | null {
+  const slug = path.split('/')[2]  // e.g. "micro-offer-draft"
+  if (!slug) return null
+
+  // Convert slug to DocType name: "micro-offer-draft" → "Micro Offer Draft"
+  const doctype = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+
+  // Strategy 1: Use Frappe's module_app boot mapping (most reliable)
+  const frappe = (window as any).frappe
+  const moduleApp: Record<string, string> = frappe?.boot?.module_app || {}
+  const doctypeModule: string | undefined = frappe?.boot?.doctype_modules?.[doctype]
+  if (doctypeModule) {
+    const appName = moduleApp[doctypeModule]
+    if (appName) {
+      const match = apps.find(a => a.app === appName)
+      if (match) return match
+    }
+  }
+
+  // Strategy 2: Match DocType name prefix against registered app labels
+  // Works because Frappe convention prefixes DocTypes with app name (e.g. "Micro Offer Draft")
+  for (const app of apps) {
+    if (doctype.startsWith(app.label + ' ') || doctype === app.label) return app
+  }
+
+  return null
+}
+
 const activeApp = computed(() => {
   const path = props.currentPath || window.location.pathname
-  return (registeredApps.value as RegApp[]).find(a => path.startsWith(a.route)) ?? null
+  // Direct route match (Vue SPA pages like /micro/..., /watch/..., etc.)
+  const byRoute = (registeredApps.value as RegApp[]).find(a => path.startsWith(a.route)) ?? null
+  if (byRoute) return byRoute
+  // Fallback for /desk/ pages: resolve from DocType
+  if (path.startsWith('/desk/')) {
+    return resolveAppFromDeskPath(path, registeredApps.value as RegApp[])
+  }
+  return null
 })
 
 const label = computed(() => {

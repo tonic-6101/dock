@@ -8,6 +8,8 @@ from dock.boot import (
     _get_registered_apps, _get_notification_types, _get_timer_state,
     _get_recent_items, _get_bookmarks, _get_guest_views, _get_settings_sections,
     _get_activity_sources, _get_unread_discussions_count,
+    _get_muted_notification_types, _get_muted_apps,
+    _get_app_delivery_channels, _get_event_reminder_defaults,
 )
 from dock.api.messages import get_message_channels, get_unread_counts
 from dock.api.settings import _get_merged_settings
@@ -44,9 +46,16 @@ def get_context(context):
     boot = {
         "installed": True,
         "version": __version__,
+        "ecosystem_links": {
+            "linkedin": "https://www.linkedin.com/in/tonic-s-solutions-1642a0273/",
+        },
         "settings": settings,
         "registered_apps": _get_registered_apps(),
         "notification_types": _get_notification_types(),
+        "muted_notification_types": _get_muted_notification_types(),
+        "muted_apps": _get_muted_apps(),
+        "app_delivery_channels": _get_app_delivery_channels(),
+        "event_reminder_defaults": _get_event_reminder_defaults(),
         "unread_notifications": frappe.db.count(
             "Dock Notification",
             {"for_user": frappe.session.user, "read": 0},

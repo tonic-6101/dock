@@ -3,7 +3,7 @@
   Copyright (C) 2024-2026 Tonic
 
   Main top bar component — exported for dynamic import by domain apps.
-  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Calendar | People | Notes | Messages | Bell | Jana | AppSwitcher | Avatar
+  Slot order (fixed): SidebarToggle | AppLabel | Search | Timer | Bookmark | Calendar | People | Notes | Messages | Bell | Jana | AppSwitcher | Avatar
 -->
 <script lang="ts">
 export default { name: 'DockNavbar' }
@@ -12,7 +12,7 @@ export default { name: 'DockNavbar' }
 <script setup lang="ts">
 import { defineAsyncComponent, onErrorCaptured, onMounted, onUnmounted, ref } from 'vue'
 import DockFallbackBar from './DockFallbackBar.vue'
-import DockPinButton from './DockPinButton.vue'
+// DockPinButton is lazy-loaded below with the other action-cluster icons
 import { useDockBoot } from '@/composables/useDockBoot'
 import { useRecentItems } from '@/composables/useRecentItems'
 import { useBookmarks } from '@/composables/useBookmarks'
@@ -46,14 +46,40 @@ const { registeredApps, dock } = useDockBoot()
 const { init: initRecent, trackItem } = useRecentItems()
 const { init: initBookmarks } = useBookmarks()
 
+/** Resolve accent color for the active app — handles both SPA routes and /desk/ paths. */
+function resolveActiveApp(path: string) {
+  type App = { app: string; label: string; route: string; color?: string }
+  const apps = registeredApps.value as App[]
+  // Direct route match (Vue SPA pages)
+  const byRoute = apps.find(a => path.startsWith(a.route))
+  if (byRoute) return byRoute
+  // Fallback for /desk/ pages: match DocType prefix against app labels
+  if (path.startsWith('/desk/')) {
+    const slug = path.split('/')[2]
+    if (slug) {
+      const doctype = slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      const frappe = (window as any).frappe
+      const moduleApp: Record<string, string> = frappe?.boot?.module_app || {}
+      const doctypeModule: string | undefined = frappe?.boot?.doctype_modules?.[doctype]
+      if (doctypeModule) {
+        const appName = moduleApp[doctypeModule]
+        if (appName) { const m = apps.find(a => a.app === appName); if (m) return m }
+      }
+      for (const app of apps) {
+        if (doctype.startsWith(app.label + ' ') || doctype === app.label) return app
+      }
+    }
+  }
+  return null
+}
+
 onMounted(() => {
   initRecent(dock.value?.recent_items)
   initBookmarks(dock.value?.bookmarks)
 
   const path = window.location.pathname
   currentPath.value = path
-  type App = { route: string; color?: string }
-  const active = (registeredApps.value as App[]).find(a => path.startsWith(a.route))
+  const active = resolveActiveApp(path)
   if (active?.color) {
     document.documentElement.style.setProperty('--dock-accent', active.color)
   }
@@ -63,6 +89,12 @@ onMounted(() => {
 function handleNavigation() {
   const path = window.location.pathname
   currentPath.value = path
+
+  // Update accent color for the newly active app
+  const active = resolveActiveApp(path)
+  if (active?.color) {
+    document.documentElement.style.setProperty('--dock-accent', active.color)
+  }
 
   // Track /{app}/{doctype}/{name} visits
   const match = path.match(/^\/([^/]+)\/([^/]+)\/([^/]+)$/)
@@ -122,12 +154,14 @@ const DockSidebarToggle   = defineAsyncComponent(() => import('./DockSidebarTogg
 const DockAppLabel        = defineAsyncComponent(() => import('./DockAppLabel.vue'))
 const DockSearch          = defineAsyncComponent(() => import('./DockSearch.vue'))
 const DockTimerButton     = defineAsyncComponent(() => import('./DockTimerButton.vue'))
+const DockPinButton       = defineAsyncComponent(() => import('./DockPinButton.vue'))
 const DockCalendarIcon    = defineAsyncComponent(() => import('./DockCalendarIcon.vue'))
 const DockPeopleIcon      = defineAsyncComponent(() => import('./DockPeopleIcon.vue'))
 const DockNotesIcon       = defineAsyncComponent(() => import('./DockNotesIcon.vue'))
 const DockTasksIcon       = defineAsyncComponent(() => import('./DockTasksIcon.vue'))
 const DockCaptureIcon     = defineAsyncComponent(() => import('./DockCaptureIcon.vue'))
 const DockMessagesIcon    = defineAsyncComponent(() => import('./DockMessagesIcon.vue'))
+const DockBriefingButton  = defineAsyncComponent(() => import('./DockBriefingButton.vue'))
 const DockBell            = defineAsyncComponent(() => import('./DockBell.vue'))
 const DockJana            = defineAsyncComponent(() => import('./DockJana.vue'))
 const DockAppSwitcher     = defineAsyncComponent(() => import('./DockAppSwitcher.vue'))
@@ -157,14 +191,15 @@ const DockAvatar          = defineAsyncComponent(() => import('./DockAvatar.vue'
 
     <!-- Right: action cluster -->
     <div class="flex items-center gap-1 flex-shrink-0">
-      <DockPinButton :current-path="currentPath" />
       <DockTimerButton />
+      <DockPinButton :current-path="currentPath" />
       <DockCalendarIcon />
       <DockPeopleIcon />
       <DockNotesIcon />
       <DockTasksIcon v-if="orgaInstalled" />
       <DockCaptureIcon v-if="repoInstalled" />
       <DockMessagesIcon />
+      <DockBriefingButton v-if="janaInstalled" />
       <DockBell />
       <DockJana v-if="janaInstalled" />
       <DockAppSwitcher />

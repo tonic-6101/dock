@@ -329,7 +329,7 @@ async function handleDelete() {
           <div>
             <label class="text-[10px] font-semibold text-[var(--dock-icon)] uppercase tracking-wider">{{ __('Source') }}</label>
             <div class="mt-1 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: ev.color || 'var(--dock-icon)' }" />
+              <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: 'var(--dock-icon)' }" />
               <span class="text-sm text-[var(--dock-text)]">{{ sourceLabel }}</span>
             </div>
           </div>

@@ -17,3 +17,115 @@
 
 /* Tokens go outside the layer — they're CSS custom properties (no class conflicts) */
 @import './styles/tokens.css';
+
+/* ── Dock navbar protection ──────────────────────────────────────────────────
+   These rules live OUTSIDE @layer dock so they are never overridden by
+   Frappe's Bootstrap CSS. The navbar is Dock's own DOM — no Bootstrap
+   elements live inside it, so there is no conflict risk.
+   This ensures the Desk navbar renders identically to the Vue SPA navbar. */
+
+#dock-navbar-root .dock-navbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  user-select: none;
+  background: var(--dock-bg);
+  color: var(--dock-text);
+  transition: box-shadow 150ms;
+  box-sizing: border-box;
+}
+
+#dock-navbar-root .dock-navbar *,
+#dock-navbar-root .dock-navbar *::before,
+#dock-navbar-root .dock-navbar *::after {
+  box-sizing: border-box;
+}
+
+/* App label — icon + text row */
+#dock-navbar-root .dock-app-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+/* Search bar layout */
+#dock-navbar-root .dock-search-bar {
+  display: flex;
+  align-items: center;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+#dock-navbar-root .dock-search-bar input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  padding: 0 0.75rem;
+  color: var(--dock-text);
+}
+
+#dock-navbar-root .dock-search-bar select {
+  height: 100%;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Ensure icon buttons in the action cluster are uniform */
+#dock-navbar-root .dock-navbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ── Hide Frappe elements replaced by Dock ────────────────────────────────────
+   Dock replaces the navbar, search, notifications, avatar, and app switcher.
+   These Frappe elements become redundant — hide them to avoid a double UI. */
+
+/* Standard navbar (v15 + v16 selectors) */
+.navbar.navbar-fixed-top,
+.navbar.navbar-expand-lg {
+  display: none !important;
+}
+
+/* Desktop page (/desk): custom desktop-navbar with its own search/bell/avatar */
+.desktop-navbar {
+  display: none !important;
+}
+
+/* Sidebar items that duplicate Dock features (search bar, notification bell) */
+.body-sidebar-container .standard-items-sections {
+  display: none !important;
+}
+
+/* Page-head elements that Dock replaces: sidebar toggle + search bar */
+.page-head .sidebar-toggle-btn {
+  display: none !important;
+}
+.page-head .search-bar {
+  display: none !important;
+}
+
+/* Frappe sidebar search & notification links (shown at sidebar top) */
+.body-sidebar-container .sidebar-search,
+.body-sidebar-container .sidebar-notification {
+  display: none !important;
+}

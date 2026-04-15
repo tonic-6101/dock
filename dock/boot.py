@@ -29,6 +29,12 @@ def extend_bootinfo(bootinfo):
         "notification_types": _get_notification_types(),
         # Muted notification types — user's personal mute list
         "muted_notification_types": _get_muted_notification_types(),
+        # Muted apps — apps whose notifications are entirely disabled
+        "muted_apps": _get_muted_apps(),
+        # Per-app delivery channels — bell, email, or both
+        "app_delivery_channels": _get_app_delivery_channels(),
+        # Event reminder defaults — user preference for auto-enabling reminders
+        "event_reminder_defaults": _get_event_reminder_defaults(),
         # Bell badge — avoids extra API call on mount
         "unread_notifications": frappe.db.count(
             "Dock Notification",
@@ -77,12 +83,18 @@ def get_boot():
     return {
         "installed": True,
         "version": __version__,
+        "ecosystem_links": {
+            "linkedin": "https://www.linkedin.com/in/tonic-s-solutions-1642a0273/",
+        },
         "settings": merged,
         "registered_apps": _get_registered_apps(),
         "calendar_sources": _get_calendar_sources(),
         "user_calendars": _get_user_calendars(),
         "notification_types": _get_notification_types(),
         "muted_notification_types": _get_muted_notification_types(),
+        "muted_apps": _get_muted_apps(),
+        "app_delivery_channels": _get_app_delivery_channels(),
+        "event_reminder_defaults": _get_event_reminder_defaults(),
         "unread_notifications": frappe.db.count(
             "Dock Notification",
             {"for_user": frappe.session.user, "read": 0},
@@ -783,3 +795,55 @@ def _get_muted_notification_types():
     except Exception:
         pass
     return []
+
+
+def _get_muted_apps():
+    """Return the current user's muted app names."""
+    import json as _json
+
+    user = frappe.session.user
+    try:
+        raw = frappe.db.get_value("Dock User Preference", user, "muted_apps")
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list):
+                return parsed
+    except Exception:
+        pass
+    return []
+
+
+def _get_app_delivery_channels():
+    """Return the current user's per-app delivery channel map."""
+    import json as _json
+
+    user = frappe.session.user
+    try:
+        raw = frappe.db.get_value("Dock User Preference", user, "app_delivery_channels")
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+    except Exception:
+        pass
+    return {}
+
+
+def _get_event_reminder_defaults():
+    """Return the current user's event reminder defaults."""
+    user = frappe.session.user
+    try:
+        vals = frappe.db.get_value(
+            "Dock User Preference",
+            user,
+            ["event_reminder_enabled", "event_reminder_minutes"],
+            as_dict=True,
+        )
+        if vals:
+            return {
+                "enabled": bool(vals.event_reminder_enabled),
+                "minutes": int(vals.event_reminder_minutes or 15),
+            }
+    except Exception:
+        pass
+    return {"enabled": False, "minutes": 15}

@@ -66,15 +66,24 @@ def create_event(
     location: str = None,
     meeting_url: str = None,
     attendees: str = None,
-    send_reminder: int = 0,
-    reminder_minutes: int = 60,
+    send_reminder: int = None,
+    reminder_minutes: int = None,
     calendar: str = None,
 ) -> dict:
     """
     Creates a native Dock Event (source_app = 'dock') with optional attendees.
     attendees: JSON string of [{user, required}]
     calendar: Dock Calendar name. If None, uses user's default calendar.
+    send_reminder/reminder_minutes: When None, inherits user's default from Dock User Preference.
     """
+    # Apply user reminder defaults when not explicitly provided
+    if send_reminder is None or reminder_minutes is None:
+        defaults = _get_user_reminder_defaults(frappe.session.user)
+        if send_reminder is None:
+            send_reminder = defaults["enabled"]
+        if reminder_minutes is None:
+            reminder_minutes = defaults["minutes"]
+
     # Resolve calendar — ensure user has a default
     if not calendar:
         from dock.api.calendars import ensure_default_calendar
@@ -122,6 +131,17 @@ def create_event(
     doc.source_name = doc.name
 
     return doc.as_dict()
+
+
+def _get_user_reminder_defaults(user: str) -> dict:
+    """Read event reminder defaults from Dock User Preference."""
+    if frappe.db.exists("Dock User Preference", user):
+        pref = frappe.get_cached_doc("Dock User Preference", user)
+        return {
+            "enabled": int(pref.event_reminder_enabled or 0),
+            "minutes": int(pref.event_reminder_minutes or 15),
+        }
+    return {"enabled": 0, "minutes": 15}
 
 
 @frappe.whitelist()

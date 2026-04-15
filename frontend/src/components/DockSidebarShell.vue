@@ -31,6 +31,7 @@ export default { name: 'DockSidebarShell' }
 <script setup lang="ts">
 import { computed, ref, type Component, type Ref, unref, onMounted, onUnmounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { useDockBoot } from '../composables/useDockBoot'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -143,6 +144,29 @@ function badgeValue(item: SidebarNavItem): number {
 }
 
 // ── Footer ────────────────────────────────────────────────────────────────
+
+const { dock: dockBoot } = useDockBoot()
+
+/** Merge app-provided links with ecosystem-wide links from Dock boot. */
+const mergedLinks = computed(() => {
+  const appLinks = unref(props.footer?.links) ?? []
+  const eco = dockBoot.value?.ecosystem_links as Record<string, string> | undefined
+  if (!eco) return appLinks
+
+  // Build global link entries from ecosystem_links (keyed by label)
+  const globalEntries: SidebarFooterLink[] = []
+  if (eco.linkedin) {
+    // Only add if app hasn't already provided a LinkedIn link
+    const hasLinkedIn = appLinks.some(
+      (l: SidebarFooterLink) => l.label?.toLowerCase() === 'linkedin' || l.url?.includes('linkedin.com')
+    )
+    if (!hasLinkedIn) {
+      globalEntries.push({ label: 'LinkedIn', url: eco.linkedin })
+    }
+  }
+
+  return [...appLinks, ...globalEntries]
+})
 
 const hasUpdate = computed(() => {
   if (!props.footer?.updateAvailable) return false
@@ -302,9 +326,9 @@ const hasUpdate = computed(() => {
             </a>
 
             <!-- Additional links (expanded only) -->
-            <template v-if="!collapsed && footer.links">
+            <template v-if="!collapsed && mergedLinks.length">
               <a
-                v-for="link in footer.links"
+                v-for="link in mergedLinks"
                 :key="link.url"
                 :href="link.url"
                 target="_blank"
@@ -316,6 +340,10 @@ const hasUpdate = computed(() => {
                 @mouseleave="($event.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'"
               >
                 <component v-if="link.icon" :is="link.icon" class="w-4 h-4" />
+                <!-- LinkedIn SVG fallback for global ecosystem links (no Vue component available) -->
+                <svg v-else-if="link.url?.includes('linkedin.com')" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                </svg>
                 <span v-else class="text-xs">{{ link.label }}</span>
               </a>
             </template>

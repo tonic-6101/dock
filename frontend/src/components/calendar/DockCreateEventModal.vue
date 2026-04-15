@@ -10,7 +10,7 @@ export default { name: 'DockCreateEventModal' }
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { X, Loader2, Search, UserPlus, UserMinus } from 'lucide-vue-next'
+import { X, Loader2, Search, UserPlus, UserMinus, BellRing } from 'lucide-vue-next'
 import { callApi } from '@/composables/useApi'
 import { __ } from '@/composables/useTranslate'
 import type { DockEvent, DockCalendar } from '@/types/dock'
@@ -38,7 +38,11 @@ interface EventForm {
   meeting_url: string
   description: string
   attendees: AttendeeEntry[]
+  send_reminder: boolean
+  reminder_minutes: number
 }
+
+const REMINDER_OPTIONS = [5, 10, 15, 30, 60]
 
 const props = withDefaults(defineProps<Props>(), {
   show: false,
@@ -55,6 +59,9 @@ const emit = defineEmits<{
 
 const EVENT_TYPES = ['Meeting', 'Deadline', 'Review', 'Milestone', 'Other']
 
+const boot = (window as any).frappe?.boot?.dock ?? (window as any).dockBoot
+const reminderDefaults = boot?.event_reminder_defaults ?? { enabled: false, minutes: 15 }
+
 const form = ref<EventForm>({
   title: '',
   calendar: '',
@@ -66,6 +73,8 @@ const form = ref<EventForm>({
   meeting_url: '',
   description: '',
   attendees: [],
+  send_reminder: reminderDefaults.enabled,
+  reminder_minutes: reminderDefaults.minutes,
 })
 
 const saving = ref(false)
@@ -96,6 +105,8 @@ function resetForm() {
     title: '', calendar: defaultCalendar.value?.name ?? '', event_type: 'Meeting', all_day: false,
     start_datetime: '', end_datetime: '',
     location: '', meeting_url: '', description: '', attendees: [],
+    send_reminder: reminderDefaults.enabled,
+    reminder_minutes: reminderDefaults.minutes,
   }
   resetDates()
   error.value = null
@@ -187,6 +198,8 @@ async function handleSubmit() {
       location: form.value.location || null,
       meeting_url: form.value.meeting_url || null,
       calendar: form.value.calendar || null,
+      send_reminder: form.value.send_reminder ? 1 : 0,
+      reminder_minutes: form.value.reminder_minutes,
       attendees: JSON.stringify(form.value.attendees.map(a => ({
         user: a.user,
         required: a.required ? 1 : 0,
@@ -367,6 +380,31 @@ function handleClose() {
                          focus:outline-none focus:border-[var(--dock-icon)] transition-colors"
                 />
               </div>
+            </div>
+
+            <!-- Reminder -->
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  v-model="form.send_reminder"
+                  type="checkbox"
+                  class="w-4 h-4 rounded border-[var(--dock-border)] accent-accent-600"
+                />
+                <BellRing class="w-3.5 h-3.5 text-[var(--dock-icon)]" />
+                <span class="text-sm text-[var(--dock-text)]">{{ __('Send reminder') }}</span>
+              </label>
+              <select
+                v-if="form.send_reminder"
+                v-model.number="form.reminder_minutes"
+                class="px-2 py-1 rounded-lg text-sm
+                       border border-[var(--dock-border)] bg-[var(--dock-bg)]
+                       text-[var(--dock-text)]
+                       focus:outline-none focus:border-[var(--dock-icon)]"
+              >
+                <option v-for="mins in REMINDER_OPTIONS" :key="mins" :value="mins">
+                  {{ mins === 60 ? __('1 hour before') : __(`${mins} min before`) }}
+                </option>
+              </select>
             </div>
 
             <!-- Invite People -->

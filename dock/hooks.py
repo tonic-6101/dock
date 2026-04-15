@@ -31,10 +31,11 @@ doc_events = {
     },
 }
 
-# Dock notification types for comment mentions
+# Dock notification types for comment mentions and calendar reminders
 dock_notification_types = [
     {"type": "comment_mention", "label": "Mentioned in Comment", "icon": "at-sign"},
     {"type": "discussion_reply", "label": "New Discussion Reply", "icon": "message-circle"},
+    {"type": "event_reminder", "label": "Event Reminder", "icon": "calendar-clock"},
 ]
 
 # Row-level permission filters (custom user fields — if_owner does not apply here)
@@ -82,6 +83,39 @@ scheduler_events = {
             "dock.scheduled_jobs.send_event_reminders.send_event_reminders",
         ],
     },
+}
+
+# Jana integration (AI assistant permissions)
+jana_permissions = {
+    "doctypes": {
+        "read": [
+            "Dock Notification", "Dock Event", "Dock Recent Item",
+            "Dock Bookmark",
+        ],
+        "create": [],
+        "update": [],
+        "never": [],
+    },
+    "endpoints": [
+        {
+            "label": "Dock — Notifications",
+            "description": "Unread notifications and counts",
+            "methods": [
+                "dock.api.notifications.get_list",
+                "dock.api.notifications.get_recent",
+            ],
+            "scoping": "user",
+        },
+        {
+            "label": "Dock — Calendar",
+            "description": "Calendar events and attendance",
+            "methods": [
+                "dock.api.calendar.get_calendar_events",
+                "dock.api.calendar.get_event_attendees",
+            ],
+            "scoping": "user",
+        },
+    ],
 }
 
 # Ship Dock custom fields on Frappe Contact

@@ -68,7 +68,9 @@ def _get_events_needing_reminder():
 
 
 def _send_reminder_for_event(event):
-    """Send reminder email to all non-declined attendees of an event."""
+    """Send reminder email and/or bell notification to all non-declined attendees.
+    Respects per-user app mute and delivery channel preferences."""
+    from dock.api.notifications import _get_user_notification_prefs
     from dock.email.calendar_invite import send_reminder_email
 
     attendees = frappe.get_all(
@@ -88,23 +90,54 @@ def _send_reminder_for_event(event):
         if att.rsvp_status == "Declined":
             continue
 
+        # Respect user's notification preferences
+        prefs = _get_user_notification_prefs(att.user)
+        if "dock" in prefs["muted_apps"]:
+            continue
+        if "event_reminder" in prefs["muted_types"]:
+            continue
+
+        channel = prefs["channels"].get("dock", "both")
+
         user_info = frappe.db.get_value("User", att.user, ["full_name", "email"], as_dict=True)
         if not user_info or not user_info.email:
             continue
 
-        try:
-            send_reminder_email(
-                recipient=user_info.email,
-                recipient_name=user_info.full_name or att.user,
-                event=event,
-                formatted_date=formatted_date,
-                formatted_time=formatted_time,
-            )
-        except Exception as e:
-            frappe.log_error(
-                message=f"Failed to send reminder to {user_info.email}: {e}",
-                title="Dock Event Reminder Email Error",
-            )
+        # Bell notification (bell or both)
+        if channel in ("bell", "both"):
+            try:
+                from dock.api.notifications import publish
+                publish(
+                    for_user=att.user,
+                    from_app="dock",
+                    notification_type="event_reminder",
+                    title=_("Reminder: {0} at {1}").format(event.title, formatted_time),
+                    message=_("{0} on {1}").format(event.title, formatted_date),
+                    reference_doctype="Dock Event",
+                    reference_name=event.name,
+                    action_url=f"/dock/calendar?event={event.name}",
+                )
+            except Exception as e:
+                frappe.log_error(
+                    message=f"Failed to publish bell notification for {att.user}: {e}",
+                    title="Dock Event Reminder Notification Error",
+                )
+
+        # Email notification (email or both)
+        if channel in ("email", "both"):
+            try:
+                send_reminder_email(
+                    recipient=user_info.email,
+                    recipient_name=user_info.full_name or att.user,
+                    event=event,
+                    formatted_date=formatted_date,
+                    formatted_time=formatted_time,
+                )
+            except Exception as e:
+                frappe.log_error(
+                    message=f"Failed to send reminder to {user_info.email}: {e}",
+                    title="Dock Event Reminder Email Error",
+                )
 
 
 def _mark_reminder_sent(event_name):

@@ -142,15 +142,18 @@ function formatHourLabel(h: number): string {
 }
 
 function eventColor(ev: DockEvent): string {
-  if (ev.color) return ev.color
-  // For native events, resolve from their user calendar
+  // 1. Calendar color — semantic group identity for native events
   if (ev.calendar) {
     const cal = [...myCalendars.value, ...sharedCalendars.value].find(c => c.name === ev.calendar)
     if (cal?.color) return cal.color
   }
-  // For app-sourced events, resolve from app source
+  // 2. Source app color — semantic group identity for cross-app events
   const src = (calendarSources.value as CalendarSource[]).find(s => s.app === ev.source_app)
-  return src?.color ?? '#6366f1'
+  if (src?.color) return src.color
+  // 3. Explicit per-event override (future UI)
+  if (ev.color) return ev.color
+  // 4. Fallback
+  return '#6366f1'
 }
 
 // ── Side-by-side overlapping event layout ──────────────────────────────────
