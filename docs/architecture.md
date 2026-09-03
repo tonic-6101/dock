@@ -20,12 +20,16 @@ On every page load Frappe calls `extend_bootinfo()` (declared in `dock/hooks.py`
 | Key | Type | Description |
 |-----|------|-------------|
 | `installed` | `boolean` | Always `true` when Dock is present |
-| `version` | `string` | Dock version (e.g. `"0.3.2"`) |
+| `version` | `string` | Dock version (e.g. `"0.3.5"`) |
 | `settings` | `object` | Merged org + user preferences |
 | `registered_apps` | `array` | App registry collected from all installed apps |
 | `calendar_sources` | `array` | Apps that declare `dock_calendar_sources` |
 | `user_calendars` | `object` | Owned + shared calendars for the current user |
 | `notification_types` | `object` | Dict keyed by type for O(1) lookup |
+| `muted_notification_types` | `array` | Notification types the user has muted |
+| `muted_apps` | `array` | Apps whose notifications are entirely muted |
+| `app_delivery_channels` | `object` | App → `bell` \| `email` \| `both` |
+| `event_reminder_defaults` | `object` | User's `{enabled, minutes}` reminder defaults |
 | `unread_notifications` | `number` | Badge count |
 | `watch_installed` | `boolean` | Whether Watch app is present |
 | `timer_state` | `object \| null` | Current timer from Watch (soft dependency) |
@@ -39,9 +43,13 @@ On every page load Frappe calls `extend_bootinfo()` (declared in `dock/hooks.py`
 | `settings_sections` | `array` | App settings UI declarations |
 | `bridges` | `array` | Cross-app sync bridges |
 | `activity_sources` | `array` | DocTypes feeding the activity feed |
+| `message_channels` | `array` | Channels from `dock_message_channels`, sorted |
+| `unread_counts` | `object` | `{total, channels: {key: count}}` across all channels |
 | `unread_discussions` | `number` | Discussion badge count |
 | `note_actions` | `array` | Actions available on Dock Notes |
 | `bin_count` | `number` | Total soft-deleted items across all apps |
+| `pinned_apps` | `array` | Apps the user pinned into the top bar (max 6) |
+| `ecosystem_links` | `object` | Public ecosystem links shown in the account menu |
 
 Domain apps can also call `dock.boot.get_boot()` directly (whitelisted API) to get the same data without a full Frappe boot.
 

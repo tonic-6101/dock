@@ -219,6 +219,62 @@ dock_bin_doctypes = [
 ]
 ```
 
+## dock_message_channels
+
+Register a communication channel as a tab in Dock's Messages panel and page.
+
+```python
+dock_message_channels = [
+    {
+        "key": "inbox",                                # Unique channel key
+        "label": "Inbox",                              # Tab label
+        "icon": "inbox",                               # Lucide icon name
+        "app": "your_app",                             # Owning app
+        "route": "/your-app/inbox",                    # Full-page route
+        "panel_component": "YourInboxPanel",           # Vue component in the slide-over
+        "badge_method": "your_app.api.inbox.unread",   # Whitelisted method returning an int
+        "sort_order": 20,                              # Lower sorts first (default 99)
+        # Optional:
+        "page_component": "YourInboxPage",             # Component for the shared page
+    },
+]
+```
+
+`key`, `label`, `app`, and `badge_method` are required — entries missing any of them are
+skipped and logged. Duplicate keys are skipped (first app wins).
+
+Dock calls every `badge_method` in `dock.api.messages.get_unread_counts()` and shows one
+combined badge. A failing `badge_method` counts as `0` and never breaks the badge.
+
+When only one channel is registered, Dock hides the tab bar and renders that channel directly.
+
+## jana_briefing_source
+
+Contribute your app's data to the Dock briefing panel. This hook is defined by **Jana**, but
+Dock reads it too — the briefing panel calls each source directly, without an LLM.
+
+```python
+# A single dotted path (not a list)
+jana_briefing_source = "your_app.api.jana_briefing.get_briefing"
+```
+
+Your function receives a `date` keyword argument and returns a plain dict:
+
+```python
+def get_briefing(date: str) -> dict:
+    return {
+        "open_tasks": [...],          # Lists are counted as actionable items
+        "nudges": {                   # Nested dicts are counted one level deep
+            "stale_leads": [...],
+        },
+    }
+```
+
+Dock aggregates all sources into `{"date": ..., "apps": {"your_app": {...}}}`. An app that
+raises is reported as `{"error": "Data collection failed"}` and never blocks the others.
+`dock.api.briefing.get_badge_count()` counts list entries (and the integer keys
+`unread_count`, `active_leads`, `entry_count`) to produce the button badge.
+
 ## watch_timer_contexts
 
 Register DocTypes that can serve as timer contexts in Watch.
@@ -249,4 +305,6 @@ watch_timer_contexts = [
 | `dock_settings_sections` | Settings page entry | `app`, `label`, `route` |
 | `dock_note_actions` | Note action buttons | `app`, `label`, `action` |
 | `dock_bin_doctypes` | Soft-delete bin support | `doctype`, `app`, `restore_endpoint`, `delete_endpoint` |
+| `dock_message_channels` | Messages panel channel | `key`, `label`, `app`, `badge_method` |
+| `jana_briefing_source` | Briefing panel data | dotted path to `get_briefing(date)` |
 | `watch_timer_contexts` | Timer context DocTypes | `doctype`, `label` |

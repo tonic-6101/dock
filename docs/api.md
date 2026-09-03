@@ -53,7 +53,15 @@ dock.api.notifications.publish
 | `reference_name` | string | Optional linked document |
 | `action_url` | string | URL to navigate to on click |
 
-**Returns:** notification name (string)
+**Returns:** notification name (string), or `None` when the notification was suppressed.
+
+`publish` resolves the recipient's preferences in this order before delivering:
+
+1. **App mute** — `from_app` in `muted_apps` → nothing is created, returns `None`
+2. **Type mute** — `notification_type` in `muted_notification_types` → returns `None`
+3. **Delivery channel** — `app_delivery_channels[from_app]` decides `bell` (Dock Notification only), `email` (`frappe.sendmail` only), or `both` (default when unset)
+
+`notification_type` is validated against the `dock_notification_types` the app declares — an unknown type raises a `ValidationError`.
 
 ### `get_recent`
 
@@ -111,6 +119,122 @@ dock.api.notifications.delete
 | Parameter | Type |
 |-----------|------|
 | `notification_names` | list |
+
+---
+
+## Messages
+
+### `get_unread_counts`
+
+Aggregate unread counts across every channel registered via `dock_message_channels`.
+
+```
+dock.api.messages.get_unread_counts
+```
+
+No parameters.
+
+**Returns:**
+
+```json
+{
+  "total": 7,
+  "channels": { "discussions": 4, "inbox": 3 }
+}
+```
+
+Each channel's `badge_method` is called in turn. A channel whose method fails is logged and
+counted as `0` — the badge never breaks because one app misbehaves.
+
+The channel list itself ships in boot data as `frappe.boot.dock.message_channels`, already
+sorted by `sort_order`.
+
+---
+
+## Briefing
+
+### `get_briefing`
+
+Collect today's briefing from every app declaring `jana_briefing_source`.
+
+```
+dock.api.briefing.get_briefing
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `date` | string | *(today)* | `YYYY-MM-DD` — the day to brief on |
+
+**Returns:**
+
+```json
+{
+  "date": "2026-04-15",
+  "apps": {
+    "watch": { "entry_count": 3, "open_timers": [] },
+    "orga": { "nudges": { "stale_leads": [] } },
+    "micro": { "error": "Data collection failed" }
+  }
+}
+```
+
+This endpoint returns raw structured data for direct rendering — no LLM, no tool-call loop.
+An app that raises is reported under its own `error` key and does not block the others.
+
+### `get_badge_count`
+
+```
+dock.api.briefing.get_badge_count
+```
+
+No parameters. **Returns:** `int` — the number of actionable briefing items, used by the
+top bar button badge. Counts list entries plus the integer keys `unread_count`,
+`active_leads`, and `entry_count`. Best-effort: failing sources contribute `0`.
+
+---
+
+## Pinned Apps
+
+Users pin up to **6** apps into the top bar. Pins are stored as a JSON array in
+`Dock User Preference.pinned_apps` and shipped in boot data as `frappe.boot.dock.pinned_apps`.
+
+### `pin_app`
+
+```
+dock.api.apps.pin_app
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app` | string | App name to pin |
+
+**Returns:** the updated pinned list. Throws when the 6-app limit is reached. Pinning an
+already-pinned app is a no-op.
+
+### `unpin_app`
+
+```
+dock.api.apps.unpin_app
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app` | string | App name to unpin |
+
+**Returns:** the updated pinned list.
+
+### `reorder_pinned_apps`
+
+```
+dock.api.apps.reorder_pinned_apps
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `order` | string | JSON array of app names in the new order |
+
+**Returns:** the validated list. Apps that are not currently pinned are dropped, and the
+result is truncated to 6 entries.
 
 ---
 
@@ -1246,4 +1370,55 @@ dock.api.account.remove_user_image
 
 ## Settings
 
-See [Configuration](configuration.md) for full details on `save_user_preference` and `save_org_settings`.
+See [Configuration](configuration.md) for the full field list behind these endpoints.
+
+### `save_user_preference`
+
+```
+dock.api.settings.save_user_preference
+```
+
+Upserts the current user's `Dock User Preference`. Every parameter is optional — only
+non-`None` values are written, so a caller can update one field without touching the rest.
+
+Accepts: `theme`, `color_mode`, `timezone`, `week_start`, `date_format`, `ui_language`,
+`calendar_default_view`, `calendar_time_format`, `calendar_show_weekends`,
+`calendar_working_hours_start`, `calendar_working_hours_end`,
+`people_display_name_format`, `people_card_fields`.
+
+**Returns:** the merged settings (user overrides on top of org defaults).
+
+### `save_notification_preferences`
+
+```
+dock.api.settings.save_notification_preferences
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `muted_notification_types` | list \| JSON string | Type keys the user mutes |
+| `muted_apps` | list \| JSON string | Apps muted entirely |
+| `app_delivery_channels` | dict \| JSON string | App → `bell`, `email`, or `both` |
+| `event_reminder_enabled` | int | Default `send_reminder` for new events |
+| `event_reminder_minutes` | int | Minutes before start (default `15`) |
+
+All parameters are optional; omitted ones are left untouched. Invalid delivery channels are
+rejected — only `bell`, `email`, and `both` are accepted.
+
+**Returns:** the merged settings.
+
+### `save_org_settings`
+
+```
+dock.api.settings.save_org_settings
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `values` | dict | Org-level fields to write |
+
+Requires write permission on **Dock Settings** (Dock Manager). Unknown keys are silently
+dropped. Publishes a realtime `dock_settings_updated` event after commit so every connected
+client refreshes.
+
+**Returns:** the merged settings.

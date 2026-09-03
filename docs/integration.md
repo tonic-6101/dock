@@ -123,11 +123,54 @@ dock_guest_views = [
 ]
 ```
 
+## Step 6 — Contribute to the briefing (optional)
+
+Declare one endpoint and your app's daily numbers show up in Dock's briefing panel:
+
+```python
+# In your_app/hooks.py — a single dotted path, not a list
+jana_briefing_source = "your_app.api.jana_briefing.get_briefing"
+```
+
+```python
+# In your_app/api/jana_briefing.py
+def get_briefing(date: str) -> dict:
+    return {
+        "open_tasks": frappe.get_all("Your DocType", filters={"status": "Open"}, limit=5),
+        "entry_count": 3,
+    }
+```
+
+Lists are counted as actionable items for the badge. If your function raises, Dock reports
+the failure for your app alone and still renders every other app's briefing.
+
+## Step 7 — Register a message channel (optional)
+
+If your app has an inbox, chat, or ticket stream, register it as a tab in Dock's Messages
+panel instead of building your own bell:
+
+```python
+dock_message_channels = [
+    {
+        "key": "inbox",
+        "label": "Inbox",
+        "icon": "inbox",
+        "app": "your_app",
+        "route": "/your-app/inbox",
+        "panel_component": "YourInboxPanel",
+        "badge_method": "your_app.api.inbox.unread_count",   # returns an int
+        "sort_order": 20,
+    },
+]
+```
+
+Dock aggregates every channel's `badge_method` into one unread badge.
+
 ## Checking if Dock is installed (frontend)
 
 ```typescript
 const dockInstalled = !!(window as any).frappe?.boot?.dock?.installed
-const dockVersion = (window as any).frappe?.boot?.dock?.version  // e.g. "0.1.0"
+const dockVersion = (window as any).frappe?.boot?.dock?.version  // e.g. "0.3.5"
 ```
 
 ## Checking if Dock is installed (Python)

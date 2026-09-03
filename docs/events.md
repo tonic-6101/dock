@@ -38,6 +38,29 @@ window.addEventListener('dock:jana-panel-unmount', () => {
 })
 ```
 
+### `dock:jana-briefing`
+
+Fired when the user opens the Jana assistant from the briefing panel, so Jana can
+pre-select the briefing agent.
+
+```typescript
+window.addEventListener('dock:jana-briefing', (e: CustomEvent) => {
+  // e.detail = { agent: 'Daily Briefing', prompt: 'Generate my morning briefing for today.' }
+})
+```
+
+### `dock:notification-read` / `dock:notification-all-read`
+
+Dispatched on `document` (not `window`) by the notifications panel when the user marks
+notifications as read, so the bell badge stays in sync.
+
+```typescript
+document.addEventListener('dock:notification-read', (e: CustomEvent) => {
+  // e.detail = { count: 1 }
+})
+document.addEventListener('dock:notification-all-read', () => { /* badge → 0 */ })
+```
+
 ## Events your app should dispatch
 
 ### `dock:trackVisit`
@@ -58,6 +81,22 @@ window.dispatchEvent(new CustomEvent('dock:trackVisit', {
 
 DockNavbar listens for this event and calls `dock.api.recent.track` automatically.
 
+### `dock:openCapture`
+
+Open Dock's capture panel and prefill it with context from your app.
+
+```typescript
+window.dispatchEvent(new CustomEvent('dock:openCapture', {
+  detail: {
+    home_property: 'Main Building',   // Optional — all fields optional
+    home_room: 'Kitchen',
+    home_item: 'Dishwasher',
+  }
+}))
+```
+
+The panel joins the provided values into its object name field.
+
 ## Realtime events (Frappe publish_realtime)
 
 Dock also publishes server-side realtime events via Frappe's WebSocket layer. These are used internally by the Dock frontend but can be observed by other apps:
@@ -65,6 +104,8 @@ Dock also publishes server-side realtime events via Frappe's WebSocket layer. Th
 | Event | When | Payload |
 |-------|------|---------|
 | `dock_notification` | New notification published | notification dict |
+| `dock_unread_update` | Message channel unread count changed | `{channel, count}` |
+| `dock_timer_update` | Timer state changed (Watch integration) | timer state dict |
 | `dock_settings_updated` | Org settings saved | — |
 | `dock_calendar_shared` | Calendar shared with a user | `{calendar, role}` |
 | `dock_rsvp_updated` | Attendee RSVP changed | `{event, user, status}` |
